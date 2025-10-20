@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 import '../models/counter_session.dart';
 import '../models/durood.dart';
 import '../database/database_helper.dart';
 import '../utils/date_helper.dart';
+import '../providers/counter_provider.dart';
+import '../providers/durood_provider.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({Key? key}) : super(key: key);
@@ -25,7 +28,14 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _loadData();
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) {
+      _loadData();
+    }
   }
 
   @override
@@ -41,14 +51,45 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
       final sessions = await _getFilteredSessions();
       final stats = await _db.getStatistics();
       
-      setState(() {
-        _sessions = sessions;
-        _statistics = stats;
-        _isLoading = false;
-      });
+      // Get current active session from provider
+      if (mounted) {
+        final counterProvider = context.read<CounterProvider>();
+        final currentSession = counterProvider.currentSession;
+        final currentCount = counterProvider.currentCount;
+        
+        // Add current active session to the list if it exists
+        List<CounterSession> allSessions = List.from(sessions);
+        if (currentSession != null && counterProvider.isSessionActive) {
+          // Create a copy with current count
+          final activeSession = currentSession.copyWith(
+            count: currentCount,
+          );
+          allSessions.insert(0, activeSession);
+        }
+        
+        // Calculate accurate statistics including active session
+        int totalCount = stats['totalCount'] as int? ?? 0;
+        int completedSessions = stats['completedSessions'] as int? ?? 0;
+        
+        if (currentSession != null && counterProvider.isSessionActive) {
+          totalCount += currentCount;
+        }
+        
+        setState(() {
+          _sessions = allSessions;
+          _statistics = {
+            'totalCount': totalCount,
+            'completedSessions': completedSessions,
+            'countByDurood': stats['countByDurood'],
+          };
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       debugPrint('Error loading history: $e');
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -80,7 +121,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('History'),
+        title: const Text('Statistics'),
         leading: IconButton(
           icon: const Icon(CupertinoIcons.back),
           onPressed: () => Navigator.pop(context),
@@ -115,7 +156,12 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                   : RefreshIndicator(
                       onRefresh: _loadData,
                       child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.only(
+                          left: 16,
+                          right: 16,
+                          top: 8,
+                          bottom: 100, // Extra padding for floating footer
+                        ),
                         itemCount: _sessions.length,
                         itemBuilder: (context, index) {
                           return _SessionItem(session: _sessions[index]);
@@ -221,14 +267,39 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
     }
 
     final theme = Theme.of(context);
+    final counterProvider = context.watch<CounterProvider>();
+    final duroodProvider = context.watch<DuroodProvider>();
+    
     final totalCount = _statistics['totalCount'] as int? ?? 0;
     final completedSessions = _statistics['completedSessions'] as int? ?? 0;
     final countByDurood = _statistics['countByDurood'] as List<dynamic>? ?? [];
+    
+    // Build count by durood map including current active session
+    final Map<String, int> duroodCounts = {};
+    for (var item in countByDurood) {
+      final name = item['name'] as String;
+      final count = item['total'] as int;
+      duroodCounts[name] = count;
+    }
+    
+    // Add current active session count
+    if (counterProvider.isSessionActive && 
+        counterProvider.currentSession != null && 
+        duroodProvider.selectedDurood != null) {
+      final currentDuroodName = duroodProvider.selectedDurood!.name;
+      duroodCounts[currentDuroodName] = 
+          (duroodCounts[currentDuroodName] ?? 0) + counterProvider.currentCount;
+    }
 
     return RefreshIndicator(
       onRefresh: _loadData,
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: 100, // Extra padding for floating footer
+        ),
         children: [
           _buildStatCard(
             title: 'Total Count',
@@ -243,15 +314,24 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
             icon: CupertinoIcons.checkmark_seal,
             color: theme.colorScheme.secondary,
           ),
+          if (counterProvider.isSessionActive && counterProvider.currentCount > 0) ...[
+            const SizedBox(height: 16),
+            _buildStatCard(
+              title: 'Current Session',
+              value: '${counterProvider.currentCount} / ${counterProvider.currentSession?.target ?? 0}',
+              icon: CupertinoIcons.play_circle,
+              color: Colors.orange,
+            ),
+          ],
           const SizedBox(height: 24),
           Text(
-            'Count by Durood/Tasbi',
+            'Count by Tasbi',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 16),
-          if (countByDurood.isEmpty)
+          if (duroodCounts.isEmpty)
             Center(
               child: Padding(
                 padding: const EdgeInsets.all(32),
@@ -264,10 +344,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
               ),
             )
           else
-            ...countByDurood.map((item) {
-              final name = item['name'] as String;
-              final count = item['total'] as int;
-              
+            ...duroodCounts.entries.map((entry) {
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(16),
@@ -280,12 +357,12 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                   children: [
                     Expanded(
                       child: Text(
-                        name,
+                        entry.key,
                         style: theme.textTheme.bodyLarge,
                       ),
                     ),
                     Text(
-                      count.toString(),
+                      entry.value.toString(),
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: theme.colorScheme.primary,
