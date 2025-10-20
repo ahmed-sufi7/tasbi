@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
@@ -119,15 +118,10 @@ class PurchaseService {
       return false;
     }
 
-    final ProductDetails? productDetails = _products.firstWhere(
+    final ProductDetails productDetails = _products.firstWhere(
       (product) => product.id == AppConfig.removeAdsProductId,
       orElse: () => throw Exception('Product not found'),
     );
-
-    if (productDetails == null) {
-      print('Remove ads product not found');
-      return false;
-    }
 
     final PurchaseParam purchaseParam = PurchaseParam(
       productDetails: productDetails,

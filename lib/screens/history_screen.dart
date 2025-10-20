@@ -78,8 +78,6 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Scaffold(
       appBar: AppBar(
         title: const Text('History'),
@@ -296,7 +294,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                   ],
                 ),
               );
-            }).toList(),
+            }),
         ],
       ),
     );

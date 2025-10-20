@@ -90,8 +90,6 @@ class DuroodSelector extends StatelessWidget {
   }
 
   void _showDuroodPicker(BuildContext context) {
-    final duroodProvider = context.read<DuroodProvider>();
-    
     showCupertinoModalPopup(
       context: context,
       builder: (context) => Material(

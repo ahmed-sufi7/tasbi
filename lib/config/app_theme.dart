@@ -37,12 +37,10 @@ class AppTheme {
       secondary: lightSecondary,
       tertiary: lightAccent,
       surface: lightSurface,
-      background: lightBackground,
       error: error,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: lightTextPrimary,
-      onBackground: lightTextPrimary,
       onError: Colors.white,
     ),
     
@@ -62,7 +60,7 @@ class AppTheme {
     ),
     
     // Card Theme
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 0,
       color: lightSurface,
       shape: RoundedRectangleBorder(
@@ -182,12 +180,10 @@ class AppTheme {
       secondary: darkSecondary,
       tertiary: darkAccent,
       surface: darkSurface,
-      background: darkBackground,
       error: error,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: darkTextPrimary,
-      onBackground: darkTextPrimary,
       onError: Colors.white,
     ),
     
@@ -207,7 +203,7 @@ class AppTheme {
     ),
     
     // Card Theme
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 0,
       color: darkSurface,
       shape: RoundedRectangleBorder(
