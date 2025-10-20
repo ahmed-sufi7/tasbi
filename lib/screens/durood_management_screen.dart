@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../models/durood.dart';
 import '../providers/durood_provider.dart';
+import '../providers/counter_provider.dart';
 import '../utils/haptic_helper.dart';
 
 class DuroodManagementScreen extends StatelessWidget {
@@ -12,7 +13,7 @@ class DuroodManagementScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manage Durood/Tasbi'),
+        title: const Text('Manage Tasbi'),
         leading: IconButton(
           icon: const Icon(CupertinoIcons.back),
           onPressed: () => Navigator.pop(context),
@@ -24,21 +25,51 @@ class DuroodManagementScreen extends StatelessWidget {
             return const Center(child: CupertinoActivityIndicator());
           }
 
-          final customDuroods = provider.duroods.where((d) => !d.isDefault).toList();
+          final allDuroods = provider.duroods;
+          final customDuroods = allDuroods.where((d) => !d.isDefault).toList();
+          final defaultDuroods = allDuroods.where((d) => d.isDefault).toList();
 
           return Column(
             children: [
               Expanded(
-                child: customDuroods.isEmpty
+                child: allDuroods.isEmpty
                     ? _buildEmptyState(context)
-                    : ListView.builder(
+                    : ListView(
                         padding: const EdgeInsets.all(16),
-                        itemCount: customDuroods.length,
-                        itemBuilder: (context, index) {
-                          return _DuroodManagementItem(
-                            durood: customDuroods[index],
-                          );
-                        },
+                        children: [
+                          // Default Duroods Section
+                          if (defaultDuroods.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Text(
+                                'Default Tasbi',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            ...defaultDuroods.map((durood) => _DuroodManagementItem(
+                              durood: durood,
+                              isDefault: true,
+                            )),
+                          ],
+                          // Custom Duroods Section
+                          if (customDuroods.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(top: 16, bottom: 12),
+                              child: Text(
+                                'Custom Tasbi',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            ...customDuroods.map((durood) => _DuroodManagementItem(
+                              durood: durood,
+                              isDefault: false,
+                            )),
+                          ],
+                        ],
                       ),
               ),
             ],
@@ -69,13 +100,13 @@ class DuroodManagementScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'No Custom Durood Yet',
+              'No Custom Tasbi Yet',
               style: theme.textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
-              'Create your own custom durood or tasbi to track',
+              'Create your own custom tasbi to track',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.textTheme.bodySmall?.color,
               ),
@@ -100,8 +131,13 @@ class DuroodManagementScreen extends StatelessWidget {
 
 class _DuroodManagementItem extends StatelessWidget {
   final Durood durood;
+  final bool isDefault;
 
-  const _DuroodManagementItem({Key? key, required this.durood}) : super(key: key);
+  const _DuroodManagementItem({
+    Key? key,
+    required this.durood,
+    this.isDefault = false,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -122,46 +158,79 @@ class _DuroodManagementItem extends StatelessWidget {
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
+        leading: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            CupertinoIcons.book,
+            color: theme.colorScheme.primary,
+          ),
+        ),
         title: Text(
           durood.name,
           style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 8),
-            Text(
-              durood.arabic,
-              style: theme.textTheme.bodyMedium,
-              textDirection: TextDirection.rtl,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text('Target: ${durood.target}', style: theme.textTheme.bodySmall),
-          ],
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            'Target: ${durood.target}',
+            style: theme.textTheme.bodySmall,
+          ),
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(CupertinoIcons.pencil),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  CupertinoPageRoute(
-                    builder: (_) => AddEditDuroodScreen(durood: durood),
-                    fullscreenDialog: true,
+        trailing: isDefault
+            ? Icon(
+                CupertinoIcons.chevron_right,
+                color: theme.colorScheme.primary,
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(CupertinoIcons.pencil),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        CupertinoPageRoute(
+                          builder: (_) => AddEditDuroodScreen(durood: durood),
+                          fullscreenDialog: true,
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
-            IconButton(
-              icon: Icon(CupertinoIcons.delete, color: theme.colorScheme.error),
-              onPressed: () => _showDeleteDialog(context),
-            ),
-          ],
-        ),
+                  IconButton(
+                    icon: Icon(CupertinoIcons.delete, color: theme.colorScheme.error),
+                    onPressed: () => _showDeleteDialog(context),
+                  ),
+                ],
+              ),
+        onTap: () async {
+          // Select this tasbi and go back to counter
+          final duroodProvider = context.read<DuroodProvider>();
+          final counterProvider = context.read<CounterProvider>();
+          
+          // If there's an active session with a different durood, save it first
+          if (counterProvider.isSessionActive && 
+              counterProvider.currentSession?.duroodId != durood.id) {
+            await counterProvider.saveSession();
+          }
+          
+          duroodProvider.selectDurood(durood);
+          HapticHelper.light();
+          
+          if (context.mounted) {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('"${durood.name}" selected. Tap anywhere to count!'),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        },
       ),
     );
   }
@@ -189,7 +258,7 @@ class _DuroodManagementItem extends StatelessWidget {
                 if (success) {
                   HapticHelper.success();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Durood deleted successfully')),
+                    const SnackBar(content: Text('Tasbi deleted successfully')),
                   );
                 }
               }
@@ -213,9 +282,6 @@ class AddEditDuroodScreen extends StatefulWidget {
 class _AddEditDuroodScreenState extends State<AddEditDuroodScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
-  late TextEditingController _arabicController;
-  late TextEditingController _transliterationController;
-  late TextEditingController _translationController;
   late TextEditingController _targetController;
 
   bool get isEditing => widget.durood != null;
@@ -224,18 +290,12 @@ class _AddEditDuroodScreenState extends State<AddEditDuroodScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.durood?.name ?? '');
-    _arabicController = TextEditingController(text: widget.durood?.arabic ?? '');
-    _transliterationController = TextEditingController(text: widget.durood?.transliteration ?? '');
-    _translationController = TextEditingController(text: widget.durood?.translation ?? '');
     _targetController = TextEditingController(text: widget.durood?.target.toString() ?? '100');
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _arabicController.dispose();
-    _transliterationController.dispose();
-    _translationController.dispose();
     _targetController.dispose();
     super.dispose();
   }
@@ -246,7 +306,7 @@ class _AddEditDuroodScreenState extends State<AddEditDuroodScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Durood' : 'Add Custom Durood'),
+        title: Text(isEditing ? 'Edit Tasbi' : 'Add Custom Tasbi'),
         leading: IconButton(
           icon: const Icon(CupertinoIcons.xmark),
           onPressed: () => Navigator.pop(context),
@@ -263,12 +323,19 @@ class _AddEditDuroodScreenState extends State<AddEditDuroodScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            // Name Field
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name *',
-                hintText: 'e.g., Durood-e-Ibrahim',
+              decoration: InputDecoration(
+                labelText: 'Name',
+                hintText: 'e.g., Morning Dhikr, Ayatul Kursi',
+                prefixIcon: const Icon(CupertinoIcons.textformat),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
               ),
+              textCapitalization: TextCapitalization.words,
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Please enter a name';
@@ -276,46 +343,19 @@ class _AddEditDuroodScreenState extends State<AddEditDuroodScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 20),
-            TextFormField(
-              controller: _arabicController,
-              decoration: const InputDecoration(
-                labelText: 'Arabic Text *',
-                hintText: 'Enter Arabic text',
-              ),
-              textDirection: TextDirection.rtl,
-              maxLines: 3,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter Arabic text';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 20),
-            TextFormField(
-              controller: _transliterationController,
-              decoration: const InputDecoration(
-                labelText: 'Transliteration (Optional)',
-                hintText: 'Enter transliteration',
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 20),
-            TextFormField(
-              controller: _translationController,
-              decoration: const InputDecoration(
-                labelText: 'Translation (Optional)',
-                hintText: 'Enter translation',
-              ),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
+            
+            // Target Count Field
             TextFormField(
               controller: _targetController,
-              decoration: const InputDecoration(
-                labelText: 'Target Count *',
+              decoration: InputDecoration(
+                labelText: 'Target Count',
                 hintText: 'e.g., 100',
+                prefixIcon: const Icon(CupertinoIcons.number),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
               ),
               keyboardType: TextInputType.number,
               validator: (value) {
@@ -330,9 +370,26 @@ class _AddEditDuroodScreenState extends State<AddEditDuroodScreen> {
               },
             ),
             const SizedBox(height: 32),
+            
+            // Quick Target Presets
             Text(
-              '* Required fields',
-              style: theme.textTheme.bodySmall,
+              'Quick Presets',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [33, 66, 99, 100, 300, 500, 1000].map((count) {
+                return ActionChip(
+                  label: Text(count.toString()),
+                  onPressed: () {
+                    _targetController.text = count.toString();
+                  },
+                );
+              }).toList(),
             ),
           ],
         ),
@@ -348,13 +405,9 @@ class _AddEditDuroodScreenState extends State<AddEditDuroodScreen> {
     final durood = Durood(
       id: widget.durood?.id,
       name: _nameController.text.trim(),
-      arabic: _arabicController.text.trim(),
-      transliteration: _transliterationController.text.trim().isNotEmpty
-          ? _transliterationController.text.trim()
-          : null,
-      translation: _translationController.text.trim().isNotEmpty
-          ? _translationController.text.trim()
-          : null,
+      arabic: _nameController.text.trim(), // Use name as arabic text for simplicity
+      transliteration: null,
+      translation: null,
       target: int.parse(_targetController.text.trim()),
       isDefault: false,
     );
@@ -371,18 +424,32 @@ class _AddEditDuroodScreenState extends State<AddEditDuroodScreen> {
     if (mounted) {
       if (success) {
         HapticHelper.success();
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isEditing
-                ? 'Durood updated successfully'
-                : 'Durood added successfully'),
-          ),
-        );
+        
+        // If adding new tasbi, select it and close all screens to go back to counter
+        if (!isEditing) {
+          // The newly created durood is already selected by the provider
+          // Pop this screen
+          Navigator.pop(context);
+          // Pop the management screen to return to counter
+          Navigator.pop(context);
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tasbi created! Start counting by tapping anywhere'),
+            ),
+          );
+        } else {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tasbi updated successfully'),
+            ),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to save durood'),
+            content: Text('Failed to save tasbi'),
             backgroundColor: Colors.red,
           ),
         );

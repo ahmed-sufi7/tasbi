@@ -7,9 +7,7 @@ import '../providers/durood_provider.dart';
 import '../services/ad_service.dart';
 import '../services/notification_service.dart';
 import '../utils/haptic_helper.dart';
-import '../widgets/counter_button.dart';
 import '../widgets/progress_ring.dart';
-import '../widgets/durood_selector.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
 import 'durood_management_screen.dart';
@@ -22,24 +20,12 @@ class CounterScreen extends StatefulWidget {
 }
 
 class _CounterScreenState extends State<CounterScreen> with TickerProviderStateMixin {
-  late AnimationController _scaleController;
   late AnimationController _rotateController;
-  late Animation<double> _scaleAnimation;
   late Animation<double> _rotateAnimation;
 
   @override
   void initState() {
     super.initState();
-    
-    // Scale animation for counter button
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 100),
-      vsync: this,
-    );
-    
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
-    );
 
     // Rotation animation for celebration
     _rotateController = AnimationController(
@@ -59,22 +45,23 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
 
   @override
   void dispose() {
-    _scaleController.dispose();
     _rotateController.dispose();
     super.dispose();
   }
 
-  void _handleCounterTap() {
+  void _handleCounterTap() async {
     final counterProvider = context.read<CounterProvider>();
     final duroodProvider = context.read<DuroodProvider>();
     
-    if (!counterProvider.isSessionActive && duroodProvider.selectedDurood != null) {
-      // Start new session
-      counterProvider.startSession(duroodProvider.selectedDurood!);
+    // If no durood selected, don't count
+    if (duroodProvider.selectedDurood == null) {
+      return;
     }
     
-    // Animate button
-    _scaleController.forward().then((_) => _scaleController.reverse());
+    if (!counterProvider.isSessionActive) {
+      // Start new session and wait for it to complete
+      await counterProvider.startSession(duroodProvider.selectedDurood!);
+    }
     
     // Increment counter
     counterProvider.increment();
@@ -83,7 +70,8 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     HapticHelper.light();
     
     // Check if target reached
-    if (counterProvider.isTargetReached && counterProvider.currentCount == counterProvider.currentSession!.target) {
+    if (counterProvider.isTargetReached && 
+        counterProvider.currentCount == counterProvider.currentSession!.target) {
       _celebrateCompletion();
     }
   }
@@ -175,46 +163,41 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // App Bar
-            _buildAppBar(theme, duroodProvider),
-            
-            const SizedBox(height: 20),
+      body: GestureDetector(
+        onTap: _handleCounterTap,
+        behavior: HitTestBehavior.opaque,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // App Bar
+              _buildAppBar(theme, duroodProvider),
+              
+              const SizedBox(height: 20),
             
             // Counter Display
             Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Progress Ring
-                  RotationTransition(
-                    turns: _rotateAnimation,
-                    child: ProgressRing(
-                      progress: counterProvider.progress,
-                      size: 280,
-                      strokeWidth: 20,
-                      child: _buildCounterDisplay(theme, counterProvider),
+              child: selectedDurood == null
+                  ? _buildEmptyState(theme, duroodProvider)
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Progress Ring
+                        RotationTransition(
+                          turns: _rotateAnimation,
+                          child: ProgressRing(
+                            progress: counterProvider.progress,
+                            size: 280,
+                            strokeWidth: 20,
+                            child: _buildCounterDisplay(theme, counterProvider),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 40),
+                        
+                        // Action Buttons
+                        _buildActionButtons(theme, counterProvider),
+                      ],
                     ),
-                  ),
-                  
-                  const SizedBox(height: 40),
-                  
-                  // Counter Button
-                  ScaleTransition(
-                    scale: _scaleAnimation,
-                    child: CounterButton(
-                      onTap: _handleCounterTap,
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 30),
-                  
-                  // Action Buttons
-                  _buildActionButtons(theme, counterProvider),
-                ],
-              ),
             ),
             
             // Banner Ad
@@ -226,6 +209,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -273,10 +257,68 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     );
   }
 
+  Widget _buildEmptyState(ThemeData theme, DuroodProvider duroodProvider) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              CupertinoIcons.book,
+              size: 80,
+              color: theme.colorScheme.primary.withOpacity(0.3),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No Tasbi Selected',
+              style: theme.textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Create or select a tasbi to start counting',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.textTheme.bodySmall?.color,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () => _showCreateDuroodSheet(duroodProvider),
+              icon: const Icon(CupertinoIcons.add),
+              label: const Text('Create Tasbi'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCounterDisplay(ThemeData theme, CounterProvider counterProvider) {
+    final duroodProvider = context.watch<DuroodProvider>();
+    final selectedDurood = duroodProvider.selectedDurood;
+    
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Selected Durood Name
+        if (selectedDurood != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              selectedDurood.name,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        // Counter
         Text(
           '${counterProvider.currentCount}',
           style: theme.textTheme.displayLarge?.copyWith(
@@ -287,7 +329,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
         ),
         const SizedBox(height: 8),
         Text(
-          'of ${counterProvider.currentSession?.target ?? 0}',
+          'of ${counterProvider.currentSession?.target ?? selectedDurood?.target ?? 0}',
           style: theme.textTheme.bodyLarge?.copyWith(
             color: theme.textTheme.bodySmall?.color,
           ),
@@ -373,31 +415,6 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showSwitchDuroodDialog(durood) {
-    showCupertinoDialog(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: const Text('Switch Durood?'),
-        content: const Text('This will save your current progress and start a new session with the selected durood.'),
-        actions: [
-          CupertinoDialogAction(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.pop(context),
-          ),
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            child: const Text('Switch'),
-            onPressed: () {
-              Navigator.pop(context);
-              context.read<CounterProvider>().saveSession();
-              context.read<DuroodProvider>().selectDurood(durood);
-            },
-          ),
-        ],
       ),
     );
   }
