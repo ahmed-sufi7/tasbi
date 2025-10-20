@@ -12,6 +12,7 @@ import '../widgets/progress_ring.dart';
 import '../widgets/durood_selector.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
+import 'durood_management_screen.dart';
 
 class CounterScreen extends StatefulWidget {
   const CounterScreen({Key? key}) : super(key: key);
@@ -178,20 +179,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
         child: Column(
           children: [
             // App Bar
-            _buildAppBar(theme),
-            
-            // Durood Selector
-            if (selectedDurood != null)
-              DuroodSelector(
-                durood: selectedDurood,
-                onChanged: (durood) {
-                  if (counterProvider.isSessionActive && counterProvider.currentCount > 0) {
-                    _showSwitchDuroodDialog(durood);
-                  } else {
-                    duroodProvider.selectDurood(durood);
-                  }
-                },
-              ),
+            _buildAppBar(theme, duroodProvider),
             
             const SizedBox(height: 20),
             
@@ -241,7 +229,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     );
   }
 
-  Widget _buildAppBar(ThemeData theme) {
+  Widget _buildAppBar(ThemeData theme, DuroodProvider duroodProvider) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -260,14 +248,25 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
             'Digital Tasbi',
             style: theme.textTheme.titleLarge,
           ),
-          IconButton(
-            icon: const Icon(CupertinoIcons.settings),
-            onPressed: () {
-              Navigator.push(
-                context,
-                CupertinoPageRoute(builder: (_) => const SettingsScreen()),
-              );
-            },
+          Row(
+            children: [
+              // Create Button
+              IconButton(
+                icon: const Icon(CupertinoIcons.add_circled),
+                onPressed: () {
+                  _showCreateDuroodSheet(duroodProvider);
+                },
+              ),
+              IconButton(
+                icon: const Icon(CupertinoIcons.settings),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    CupertinoPageRoute(builder: (_) => const SettingsScreen()),
+                  );
+                },
+              ),
+            ],
           ),
         ],
       ),
@@ -400,6 +399,13 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
           ),
         ],
       ),
+    );
+  }
+
+  void _showCreateDuroodSheet(DuroodProvider duroodProvider) {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => const DuroodManagementScreen(),
     );
   }
 }

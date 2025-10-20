@@ -55,9 +55,7 @@ class NotificationService {
           sound: true,
         );
 
-    await _notifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
+    // Android 13+ permission request is handled automatically by the plugin
   }
 
   void _onDidReceiveLocalNotification(int id, String? title, String? body, String? payload) {

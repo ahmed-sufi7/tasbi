@@ -145,16 +145,23 @@ class _ProgressRingPainter extends CustomPainter {
       return;
     }
 
+    // Don't draw if progress is 0 or invalid
+    if (progress <= 0 || progress.isNaN || progress.isInfinite) {
+      return;
+    }
+
     // Progress paint with gradient
-    final sweepAngle = 2 * math.pi * progress;
+    final sweepAngle = 2 * math.pi * progress.clamp(0.0, 1.0);
     
     Paint paint;
-    if (secondaryColor != null) {
+    if (secondaryColor != null && sweepAngle > 0.01) {
+      // Only use gradient if there's enough angle to draw
       paint = Paint()
         ..shader = SweepGradient(
           colors: [color, secondaryColor!],
           startAngle: -math.pi / 2,
           endAngle: -math.pi / 2 + sweepAngle,
+          transform: const GradientRotation(0),
         ).createShader(rect)
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
@@ -168,13 +175,15 @@ class _ProgressRingPainter extends CustomPainter {
     }
 
     // Draw arc from top (start at -90 degrees)
-    canvas.drawArc(
-      rect,
-      -math.pi / 2,
-      sweepAngle,
-      false,
-      paint,
-    );
+    if (sweepAngle > 0) {
+      canvas.drawArc(
+        rect,
+        -math.pi / 2,
+        sweepAngle,
+        false,
+        paint,
+      );
+    }
   }
 
   @override
