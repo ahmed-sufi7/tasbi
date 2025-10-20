@@ -9,21 +9,34 @@ class CounterProvider extends ChangeNotifier {
   int _currentCount = 0;
   CounterSession? _currentSession;
   bool _isSessionActive = false;
+  bool _isUnlimitedMode = false;
 
   int get currentCount => _currentCount;
   CounterSession? get currentSession => _currentSession;
   bool get isSessionActive => _isSessionActive;
+  bool get isUnlimitedMode => _isUnlimitedMode;
 
   // Get progress percentage
   double get progress {
+    if (_isUnlimitedMode) return 0;
     if (_currentSession == null || _currentSession!.target == 0) return 0;
     return (_currentCount / _currentSession!.target).clamp(0.0, 1.0);
   }
 
   // Check if target is reached
   bool get isTargetReached {
+    if (_isUnlimitedMode) return false;
     if (_currentSession == null) return false;
     return _currentCount >= _currentSession!.target;
+  }
+
+  // Start unlimited counting session (no tasbi selected)
+  void startUnlimitedSession() {
+    _currentCount = 0;
+    _currentSession = null;
+    _isSessionActive = true;
+    _isUnlimitedMode = true;
+    notifyListeners();
   }
 
   // Start a new counter session
@@ -38,12 +51,13 @@ class CounterProvider extends ChangeNotifier {
     _currentSession = session.copyWith(id: id);
     _currentCount = 0;
     _isSessionActive = true;
+    _isUnlimitedMode = false;
     notifyListeners();
   }
 
   // Increment counter
   void increment() {
-    if (!_isSessionActive || _currentSession == null) return;
+    if (!_isSessionActive) return;
     
     _currentCount++;
     notifyListeners();
@@ -51,7 +65,7 @@ class CounterProvider extends ChangeNotifier {
 
   // Decrement counter
   void decrement() {
-    if (!_isSessionActive || _currentSession == null || _currentCount <= 0) return;
+    if (!_isSessionActive || _currentCount <= 0) return;
     
     _currentCount--;
     notifyListeners();
@@ -65,6 +79,15 @@ class CounterProvider extends ChangeNotifier {
 
   // Save current session
   Future<void> saveSession({String? notes}) async {
+    if (_isUnlimitedMode) {
+      // Just reset for unlimited mode
+      _currentCount = 0;
+      _isSessionActive = false;
+      _isUnlimitedMode = false;
+      notifyListeners();
+      return;
+    }
+    
     if (_currentSession == null) return;
 
     final updatedSession = _currentSession!.copyWith(
@@ -78,11 +101,21 @@ class CounterProvider extends ChangeNotifier {
     _currentSession = null;
     _currentCount = 0;
     _isSessionActive = false;
+    _isUnlimitedMode = false;
     notifyListeners();
   }
 
   // Complete session (save with completion flag)
   Future<void> completeSession({String? notes}) async {
+    if (_isUnlimitedMode) {
+      // Just reset for unlimited mode
+      _currentCount = 0;
+      _isSessionActive = false;
+      _isUnlimitedMode = false;
+      notifyListeners();
+      return;
+    }
+    
     if (_currentSession == null) return;
 
     final updatedSession = _currentSession!.copyWith(
@@ -96,17 +129,27 @@ class CounterProvider extends ChangeNotifier {
     _currentSession = null;
     _currentCount = 0;
     _isSessionActive = false;
+    _isUnlimitedMode = false;
     notifyListeners();
   }
 
   // Cancel session (discard without saving)
   Future<void> cancelSession() async {
+    if (_isUnlimitedMode) {
+      _currentCount = 0;
+      _isSessionActive = false;
+      _isUnlimitedMode = false;
+      notifyListeners();
+      return;
+    }
+    
     if (_currentSession?.id != null) {
       await _db.deleteSession(_currentSession!.id!);
     }
     _currentSession = null;
     _currentCount = 0;
     _isSessionActive = false;
+    _isUnlimitedMode = false;
     notifyListeners();
   }
 
@@ -115,6 +158,7 @@ class CounterProvider extends ChangeNotifier {
     _currentSession = session;
     _currentCount = session.count;
     _isSessionActive = true;
+    _isUnlimitedMode = false;
     notifyListeners();
   }
 

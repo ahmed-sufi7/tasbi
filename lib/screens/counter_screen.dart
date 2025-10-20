@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../providers/counter_provider.dart';
 import '../providers/durood_provider.dart';
+import '../models/durood.dart';
 import '../services/ad_service.dart';
 import '../services/notification_service.dart';
 import '../utils/haptic_helper.dart';
@@ -37,9 +38,18 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
       CurvedAnimation(parent: _rotateController, curve: Curves.elasticOut),
     );
 
-    // Load active session if any
+    // Reset to default unlimited mode on app start
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CounterProvider>().loadActiveSession();
+      final counterProvider = context.read<CounterProvider>();
+      final duroodProvider = context.read<DuroodProvider>();
+      
+      // Clear any selected durood to show default
+      duroodProvider.clearSelection();
+      
+      // Cancel any active session to start fresh
+      if (counterProvider.isSessionActive) {
+        counterProvider.cancelSession();
+      }
     });
   }
 
@@ -53,14 +63,15 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     final counterProvider = context.read<CounterProvider>();
     final duroodProvider = context.read<DuroodProvider>();
     
-    // If no durood selected, don't count
-    if (duroodProvider.selectedDurood == null) {
-      return;
-    }
-    
+    // Start session if not active
     if (!counterProvider.isSessionActive) {
-      // Start new session and wait for it to complete
-      await counterProvider.startSession(duroodProvider.selectedDurood!);
+      if (duroodProvider.selectedDurood != null) {
+        // Start session with selected tasbi
+        await counterProvider.startSession(duroodProvider.selectedDurood!);
+      } else {
+        // Start unlimited default counting
+        counterProvider.startUnlimitedSession();
+      }
     }
     
     // Increment counter
@@ -69,8 +80,9 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     // Haptic feedback
     HapticHelper.light();
     
-    // Check if target reached
-    if (counterProvider.isTargetReached && 
+    // Check if target reached (only for non-unlimited mode)
+    if (!counterProvider.isUnlimitedMode && 
+        counterProvider.isTargetReached && 
         counterProvider.currentCount == counterProvider.currentSession!.target) {
       _celebrateCompletion();
     }
@@ -122,7 +134,12 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
 
   void _saveAndReset() {
     final counterProvider = context.read<CounterProvider>();
+    final duroodProvider = context.read<DuroodProvider>();
+    
     counterProvider.completeSession();
+    
+    // Clear selection to return to default unlimited mode
+    duroodProvider.clearSelection();
     
     // Show interstitial ad occasionally
     if (counterProvider.currentCount % 5 == 0) {
@@ -176,28 +193,26 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
             
             // Counter Display
             Expanded(
-              child: selectedDurood == null
-                  ? _buildEmptyState(theme, duroodProvider)
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Progress Ring
-                        RotationTransition(
-                          turns: _rotateAnimation,
-                          child: ProgressRing(
-                            progress: counterProvider.progress,
-                            size: 280,
-                            strokeWidth: 20,
-                            child: _buildCounterDisplay(theme, counterProvider),
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 40),
-                        
-                        // Action Buttons
-                        _buildActionButtons(theme, counterProvider),
-                      ],
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Progress Ring
+                  RotationTransition(
+                    turns: _rotateAnimation,
+                    child: ProgressRing(
+                      progress: counterProvider.progress,
+                      size: 280,
+                      strokeWidth: 20,
+                      child: _buildCounterDisplay(theme, counterProvider, selectedDurood),
                     ),
+                  ),
+                  
+                  const SizedBox(height: 40),
+                  
+                  // Action Buttons
+                  _buildActionButtons(theme, counterProvider),
+                ],
+              ),
             ),
             
             // Banner Ad
@@ -257,67 +272,25 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     );
   }
 
-  Widget _buildEmptyState(ThemeData theme, DuroodProvider duroodProvider) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              CupertinoIcons.book,
-              size: 80,
-              color: theme.colorScheme.primary.withOpacity(0.3),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No Tasbi Selected',
-              style: theme.textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Create or select a tasbi to start counting',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.textTheme.bodySmall?.color,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () => _showCreateDuroodSheet(duroodProvider),
-              icon: const Icon(CupertinoIcons.add),
-              label: const Text('Create Tasbi'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCounterDisplay(ThemeData theme, CounterProvider counterProvider) {
-    final duroodProvider = context.watch<DuroodProvider>();
-    final selectedDurood = duroodProvider.selectedDurood;
+  Widget _buildCounterDisplay(ThemeData theme, CounterProvider counterProvider, Durood? selectedDurood) {
+    final isUnlimited = counterProvider.isUnlimitedMode || selectedDurood == null;
     
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Selected Durood Name
-        if (selectedDurood != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(
-              selectedDurood.name,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
+        // Tasbi Name or Default Text
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(
+            isUnlimited ? 'صَلَّى ٱللّٰهُ عَلَيْهِ وَآلِهِ وَسَلَّمَ' : selectedDurood!.name,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w600,
+              fontSize: isUnlimited ? 20 : null,
             ),
+            textAlign: TextAlign.center,
           ),
+        ),
         // Counter
         Text(
           '${counterProvider.currentCount}',
@@ -328,12 +301,14 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          'of ${counterProvider.currentSession?.target ?? selectedDurood?.target ?? 0}',
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.textTheme.bodySmall?.color,
+        // Target or Unlimited text
+        if (!isUnlimited)
+          Text(
+            'of ${counterProvider.currentSession?.target ?? selectedDurood!.target}',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.textTheme.bodySmall?.color,
+            ),
           ),
-        ),
       ],
     );
   }

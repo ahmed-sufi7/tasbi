@@ -14,6 +14,32 @@ class DuroodProvider extends ChangeNotifier {
 
   DuroodProvider() {
     loadDuroods();
+    _ensureDefaultTasbiExists();
+  }
+
+  // Ensure default salawat tasbi exists
+  Future<void> _ensureDefaultTasbiExists() async {
+    try {
+      final duroods = await _db.getAllDuroods();
+      final hasDefault = duroods.any((d) => d.isDefault && d.arabic == 'صَلَّى ٱللّٰهُ عَلَيْهِ وَآلِهِ وَسَلَّمَ');
+      
+      if (!hasDefault) {
+        // Create default salawat tasbi
+        final defaultTasbi = Durood(
+          name: 'Salawat',
+          arabic: 'صَلَّى ٱللّٰهُ عَلَيْهِ وَآلِهِ وَسَلَّمَ',
+          transliteration: 'Ṣallā Allāhu ʿalayhi wa-ālihī wa-sallam',
+          translation: 'May Allah bless him and his family and grant them peace',
+          target: 0, // Unlimited
+          isDefault: true,
+        );
+        
+        await _db.createDurood(defaultTasbi);
+        await loadDuroods();
+      }
+    } catch (e) {
+      debugPrint('Error ensuring default tasbi: $e');
+    }
   }
 
   Future<void> loadDuroods() async {
@@ -22,9 +48,7 @@ class DuroodProvider extends ChangeNotifier {
 
     try {
       _duroods = await _db.getAllDuroods();
-      if (_duroods.isNotEmpty && _selectedDurood == null) {
-        _selectedDurood = _duroods.first;
-      }
+      // Don't auto-select any durood, keep it null for default unlimited mode
     } catch (e) {
       debugPrint('Error loading duroods: $e');
     } finally {
@@ -35,6 +59,11 @@ class DuroodProvider extends ChangeNotifier {
 
   Future<void> selectDurood(Durood durood) async {
     _selectedDurood = durood;
+    notifyListeners();
+  }
+
+  void clearSelection() {
+    _selectedDurood = null;
     notifyListeners();
   }
 

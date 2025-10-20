@@ -177,7 +177,7 @@ class _DuroodManagementItem extends StatelessWidget {
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text(
-            'Target: ${durood.target}',
+            durood.target == 0 ? 'Unlimited' : 'Target: ${durood.target}',
             style: theme.textTheme.bodySmall,
           ),
         ),
