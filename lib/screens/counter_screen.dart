@@ -275,16 +275,16 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                   'إِنَّ اللَّهَ وَمَلَائِكَتَهُ يُصَلُّونَ عَلَى النَّبِيِّ ۚ يَا أَيُّهَا الَّذِينَ آمَنُوا صَلُّوا عَلَيْهِ وَسَلِّمُوا تَسْلِيمًا',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: const Color(0xFF1E90FF),
-                    height: 1.8,
-                    letterSpacing: 0.3,
+                    height: 1.4,
+                    letterSpacing: 0.2,
                   ),
                 ),
               ),
               
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
             
             // Counter Display
             Expanded(
@@ -298,7 +298,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                         // Horizontal action bar
                         _buildActionBar(theme, counterProvider),
                         
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
                         
                         // Clock-face progress ring
                         RotationTransition(
@@ -307,8 +307,8 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                             progress: counterProvider.progress,
                             endpointProgress: counterProvider.endpointProgress,
                             currentCount: counterProvider.currentCount,
-                            size: 340,
-                            strokeWidth: 28,
+                            size: 280,
+                            strokeWidth: 22,
                             showClockFace: true,
                             showMilestones: !counterProvider.isUnlimitedMode,
                             milestones: const [100, 300, 500, 1000],
@@ -316,7 +316,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                           ),
                         ),
                         
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
                         
                         // Bottom label
                         _buildBottomLabel(theme, counterProvider, selectedDurood),
@@ -473,11 +473,11 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                 Text(
                   '${counterProvider.currentCount}',
                   style: const TextStyle(
-                    fontSize: 88,
+                    fontSize: 72,
                     fontWeight: FontWeight.w200,
                     color: Color(0xFF1E90FF), // primary_accent from design system
                     fontFeatures: [FontFeature.tabularFigures()],
-                    letterSpacing: -2,
+                    letterSpacing: -1.5,
                     height: 1.0,
                   ),
                 ),
@@ -485,11 +485,11 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                 // Target count (for non-unlimited mode)
                 if (hasTarget)
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.only(top: 3),
                     child: Text(
                       '/ ${counterProvider.currentSession!.target}',
                       style: const TextStyle(
-                        fontSize: 24, // time_unit size: 24-28px from design system
+                        fontSize: 20, // time_unit size: 24-28px from design system
                         fontWeight: FontWeight.w400,
                         color: Color(0xFF8A8A8A), // text_secondary from design system
                         letterSpacing: 0,
@@ -513,7 +513,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
       child: Text(
         isUnlimited ? 'صَلَّى ٱللّٰهُ عَلَيْهِ وَآلِهِ وَسَلَّمَ' : selectedDurood!.name,
         style: const TextStyle(
-          fontSize: 22, // bottom_label: 20-24px from design system
+          fontSize: 18, // bottom_label: 20-24px from design system
           fontWeight: FontWeight.w400, // Regular weight
           color: Colors.white,
           letterSpacing: 0.5,
