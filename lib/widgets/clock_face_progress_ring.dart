@@ -140,10 +140,10 @@ class _ClockFacePainter extends CustomPainter {
 
     if (!showClockFace) return;
 
-    // Draw tick marks (60 ticks)
-    for (int i = 0; i < 60; i++) {
-      final isMajorTick = i % 5 == 0;
-      final angle = (i * 6 - 90) * math.pi / 180;
+    // Draw tick marks (120 ticks)
+    for (int i = 0; i < 120; i++) {
+      final isMajorTick = i % 10 == 0;
+      final angle = (i * 3 - 90) * math.pi / 180;
       
       final tickPaint = Paint()
         ..color = const Color(0xFF2A2A2A).withOpacity(0.4) // opacity 0.4 as per design system
@@ -165,36 +165,6 @@ class _ClockFacePainter extends CustomPainter {
       );
 
       canvas.drawLine(startPoint, endPoint, tickPaint);
-    }
-
-    // Draw hour numbers (0, 6, 12, 18)
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    );
-
-    final hourNumbers = [0, 6, 12, 18];
-    for (final hour in hourNumbers) {
-      final angle = (hour * 30 - 90) * math.pi / 180;
-      final textRadius = radius - strokeWidth - 30;
-
-      textPainter.text = TextSpan(
-        text: hour.toString(),
-        style: TextStyle(
-          fontSize: 17, // clock_numbers: 16-18px from design system
-          fontWeight: FontWeight.w500, // Medium weight
-          color: const Color(0xFF8A8A8A).withOpacity(0.6), // opacity 0.6
-        ),
-      );
-
-      textPainter.layout();
-
-      final offset = Offset(
-        center.dx + textRadius * math.cos(angle) - textPainter.width / 2,
-        center.dy + textRadius * math.sin(angle) - textPainter.height / 2,
-      );
-
-      textPainter.paint(canvas, offset);
     }
   }
 
@@ -278,7 +248,7 @@ class _ProgressRingPainter extends CustomPainter {
       // Outer circle (badge container)
       canvas.drawCircle(
         Offset(badgeX, badgeY),
-        20, // Increased from 16 for larger badge
+        16, // Reduced size for smaller badge
         badgePaint,
       );
       
@@ -289,7 +259,7 @@ class _ProgressRingPainter extends CustomPainter {
       
       canvas.drawCircle(
         Offset(badgeX, badgeY),
-        5, // Reduced from 8 for smaller inner dot
+        4, // Reduced for smaller inner dot
         iconPaint,
       );
     }

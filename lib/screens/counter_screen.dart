@@ -266,7 +266,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
               // Simplified App Bar
               _buildAppBar(theme, duroodProvider),
               
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               
               // Main Arabic heading
               Padding(
@@ -284,7 +284,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                 ),
               ),
               
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
             
             // Counter Display
             Expanded(

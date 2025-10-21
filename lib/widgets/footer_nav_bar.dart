@@ -26,7 +26,7 @@ class FooterNavBar extends StatelessWidget {
     this.activeIndex = 0,
     this.backgroundColor = const Color(0xFF1A1A1A),
     this.iconColor = Colors.white,
-    this.height = 85.0,
+    this.height = 75.0,
   }) : super(key: key);
 
   @override
@@ -35,7 +35,7 @@ class FooterNavBar extends StatelessWidget {
     final computedWidth = navWidth ?? (screenWidth * 0.65).clamp(200.0, 280.0);
 
     // Bar inner height (the rounded black container)
-    const barHeight = 65.0;
+    const barHeight = 58.0;
 
     return Center(
       child: SizedBox(
@@ -69,7 +69,7 @@ class FooterNavBar extends StatelessWidget {
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -82,13 +82,13 @@ class FooterNavBar extends StatelessWidget {
                     ),
 
                     // Spacing before add button
-                    const SizedBox(width: 30),
+                    const SizedBox(width: 24),
 
                     // Placeholder for centered add button spacing
-                    const SizedBox(width: 40),
+                    const SizedBox(width: 36),
 
                     // Spacing after add button
-                    const SizedBox(width: 30),
+                    const SizedBox(width: 24),
 
                     // Stats icon
                     _NavImageButton(
@@ -108,8 +108,8 @@ class FooterNavBar extends StatelessWidget {
               child: GestureDetector(
                 onTap: onAddTap,
                 child: Container(
-                  width: 56,
-                  height: 56,
+                  width: 50,
+                  height: 50,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
@@ -128,7 +128,7 @@ class FooterNavBar extends StatelessWidget {
                   child: Icon(
                     CupertinoIcons.add,
                     color: backgroundColor,
-                    size: 30,
+                    size: 26,
                   ),
                 ),
               ),
@@ -165,8 +165,8 @@ class _NavImageButton extends StatelessWidget {
         alignment: Alignment.center,
         child: Image.asset(
           isActive ? activeImage : inactiveImage,
-          width: 24,
-          height: 24,
+          width: 22,
+          height: 22,
           fit: BoxFit.contain,
         ),
       ),
@@ -201,8 +201,8 @@ class _NavIconButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       onTap: onTap,
       child: Container(
-        width: 50,
-        height: 50,
+        width: 44,
+        height: 44,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: activeBg,
@@ -211,7 +211,7 @@ class _NavIconButton extends StatelessWidget {
         child: Icon(
           icon,
           color: activeIconColor,
-          size: 24,
+          size: 22,
         ),
       ),
     );

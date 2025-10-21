@@ -64,6 +64,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           // Main content with PageView for smooth transitions
           PageView(
             controller: _pageController,
+            physics: const NeverScrollableScrollPhysics(), // Disable horizontal swiping
             onPageChanged: (index) {
               setState(() {
                 _currentIndex = index;
