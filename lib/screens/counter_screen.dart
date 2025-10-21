@@ -218,7 +218,25 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
               // Simplified App Bar
               _buildAppBar(theme, duroodProvider),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
+              
+              // Main Arabic heading
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  'إِنَّ اللَّهَ وَمَلَائِكَتَهُ يُصَلُّونَ عَلَى النَّبِيِّ ۚ يَا أَيُّهَا الَّذِينَ آمَنُوا صَلُّوا عَلَيْهِ وَسَلِّمُوا تَسْلِيمًا',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1E90FF),
+                    height: 1.8,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
             
             // Counter Display
             Expanded(
