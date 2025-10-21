@@ -26,6 +26,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
   late Animation<double> _rotateAnimation;
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isSoundEnabled = false;
+  bool _isVibrateEnabled = false;
 
   @override
   void initState() {
@@ -90,8 +91,11 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
       _playTapSound();
     }
     
-    // Haptic feedback
-    HapticHelper.light();
+    // Vibration/Haptic feedback based on vibrate toggle
+    if (_isVibrateEnabled) {
+      HapticHelper.heavy(); // Heavy haptic for noticeable vibration when enabled
+    }
+    // No haptic feedback when vibrate is disabled
     
     // Check if target reached (only for non-unlimited mode)
     if (!counterProvider.isUnlimitedMode && 
@@ -120,6 +124,14 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     });
     HapticHelper.light();
     debugPrint('Sound enabled: $_isSoundEnabled');
+  }
+
+  void _toggleVibrate() {
+    setState(() {
+      _isVibrateEnabled = !_isVibrateEnabled;
+    });
+    HapticHelper.light();
+    debugPrint('Vibrate enabled: $_isVibrateEnabled');
   }
 
   void _celebrateCompletion() {
@@ -377,10 +389,8 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
           // Vibrate button
           _buildActionButton(
             icon: CupertinoIcons.device_phone_portrait,
-            onTap: () {
-              // TODO: Toggle vibration
-              HapticHelper.light();
-            },
+            isActive: _isVibrateEnabled,
+            onTap: _toggleVibrate,
           ),
           const SizedBox(width: 12),
           
