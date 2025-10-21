@@ -18,6 +18,15 @@ class DuroodManagementScreen extends StatelessWidget {
           icon: const Icon(CupertinoIcons.back),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              icon: const Icon(CupertinoIcons.add),
+              onPressed: () => _showAddDuroodDialog(context),
+            ),
+          ),
+        ],
       ),
       body: Consumer<DuroodProvider>(
         builder: (context, provider, _) {
@@ -75,11 +84,6 @@ class DuroodManagementScreen extends StatelessWidget {
             ],
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddDuroodDialog(context),
-        icon: const Icon(CupertinoIcons.add),
-        label: const Text('Add Custom'),
       ),
     );
   }

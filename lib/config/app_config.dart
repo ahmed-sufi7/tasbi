@@ -24,7 +24,7 @@ class AppConfig {
   // Default Durood/Tasbi Presets
   static const List<Map<String, dynamic>> defaultDuroods = [
     {
-      'name': 'Durood-e-Ibrahim',
+      'name': 'دورود إبراهيم',
       'arabic': 'اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَعَلَى آلِ مُحَمَّدٍ كَمَا صَلَّيْتَ عَلَى إِبْرَاهِيمَ وَعَلَى آلِ إِبْرَاهِيمَ إِنَّكَ حَمِيدٌ مَجِيدٌ',
       'transliteration': 'Allahumma salli ala Muhammadin wa ala ali Muhammadin kama sallayta ala Ibrahima wa ala ali Ibrahima innaka Hameedum Majeed',
       'translation': 'O Allah, send Your mercy upon Muhammad and upon the family of Muhammad as You sent Your mercy upon Ibrahim and upon the family of Ibrahim. Indeed, You are the Praiseworthy, the Glorious.',
@@ -32,7 +32,7 @@ class AppConfig {
       'isDefault': true,
     },
     {
-      'name': 'SubhanAllah',
+      'name': 'سُبْحَانَ اللّهِ',
       'arabic': 'سُبْحَانَ اللّهِ',
       'transliteration': 'Subhan Allah',
       'translation': 'Glory be to Allah',
@@ -40,7 +40,7 @@ class AppConfig {
       'isDefault': true,
     },
     {
-      'name': 'Alhamdulillah',
+      'name': 'الْحَمْدُ لِلّهِ',
       'arabic': 'الْحَمْدُ لِلّهِ',
       'transliteration': 'Alhamdulillah',
       'translation': 'All praise is due to Allah',
@@ -48,7 +48,7 @@ class AppConfig {
       'isDefault': true,
     },
     {
-      'name': 'Allahu Akbar',
+      'name': 'اللّهُ أَكْبَرُ',
       'arabic': 'اللّهُ أَكْبَرُ',
       'transliteration': 'Allahu Akbar',
       'translation': 'Allah is the Greatest',
@@ -56,7 +56,7 @@ class AppConfig {
       'isDefault': true,
     },
     {
-      'name': 'La ilaha illallah',
+      'name': 'لَا إِلَٰهَ إِلَّا ٱللَّٰهُ',
       'arabic': 'لَا إِلَٰهَ إِلَّا ٱللَّٰهُ',
       'transliteration': 'La ilaha illallah',
       'translation': 'There is no deity except Allah',

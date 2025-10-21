@@ -38,12 +38,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   void _showAddDuroodSheet() {
     HapticHelper.light();
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const DuroodManagementScreen(),
-        fullscreenDialog: true,
-      ),
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => const DuroodManagementScreen(),
     );
   }
 

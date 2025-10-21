@@ -83,7 +83,8 @@ class DatabaseHelper {
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
     // Handle database upgrades here
     if (oldVersion < 2) {
-      // Future upgrade logic
+      // Update default duroods with Arabic names
+      await _updateDefaultDuroods(db);
     }
   }
 
@@ -103,7 +104,66 @@ class DatabaseHelper {
     }
   }
 
-  // CRUD operations for Durood
+  /// Update existing default duroods with new Arabic names
+  Future<void> _updateDefaultDuroods(Database db) async {
+    // Get current default duroods
+    final currentDefaults = await db.query(
+      'duroods',
+      where: 'isDefault = ?',
+      whereArgs: [1],
+    );
+    
+    // First, specifically update the Salawat tasbi to Salawat/Durood
+    final salawatDurood = currentDefaults.firstWhere(
+      (d) => d['arabic'] == 'صَلَّى ٱللّٰهُ عَلَيْهِ وَآلِهِ وَسَلَّمَ' && d['name'] == 'Salawat',
+      orElse: () => <String, dynamic>{},
+    );
+    
+    if (salawatDurood.isNotEmpty) {
+      final updatedSalawat = Durood.fromMap(salawatDurood).copyWith(
+        name: 'Salawat/Durood',
+        updatedAt: DateTime.now(),
+      );
+      
+      await db.update(
+        'duroods',
+        updatedSalawat.toMap(),
+        where: 'id = ?',
+        whereArgs: [updatedSalawat.id],
+      );
+    }
+    
+    // Update each default durood with new data from AppConfig
+    for (var duroodData in AppConfig.defaultDuroods) {
+      // Find matching durood by transliteration (which should be unique)
+      final matchingDurood = currentDefaults.firstWhere(
+        (d) => d['transliteration'] == duroodData['transliteration'],
+        orElse: () => <String, dynamic>{},
+      );
+      
+      // If found, update it with new Arabic name
+      if (matchingDurood.isNotEmpty) {
+        final updatedDurood = Durood.fromMap(matchingDurood).copyWith(
+          name: duroodData['name'] as String,
+          arabic: duroodData['arabic'] as String,
+          updatedAt: DateTime.now(),
+        );
+        
+        await db.update(
+          'duroods',
+          updatedDurood.toMap(),
+          where: 'id = ?',
+          whereArgs: [updatedDurood.id],
+        );
+      }
+    }
+  }
+
+  /// Public method to update default duroods with Arabic names
+  Future<void> updateDefaultDuroods() async {
+    final db = await database;
+    await _updateDefaultDuroods(db);
+  }
   Future<String> createDurood(Durood durood) async {
     final db = await database;
     const uuid = Uuid();

@@ -26,7 +26,7 @@ class DuroodProvider extends ChangeNotifier {
       if (!hasDefault) {
         // Create default salawat tasbi
         final defaultTasbi = Durood(
-          name: 'Salawat',
+          name: 'Salawat/Durood',
           arabic: 'صَلَّى ٱللّٰهُ عَلَيْهِ وَآلِهِ وَسَلَّمَ',
           transliteration: 'Ṣallā Allāhu ʿalayhi wa-ālihī wa-sallam',
           translation: 'May Allah bless him and his family and grant them peace',
@@ -37,6 +37,10 @@ class DuroodProvider extends ChangeNotifier {
         await _db.createDurood(defaultTasbi);
         await loadDuroods();
       }
+      
+      // Update existing default duroods with new Arabic names
+      await _db.updateDefaultDuroods();
+      await loadDuroods();
     } catch (e) {
       debugPrint('Error ensuring default tasbi: $e');
     }
