@@ -148,41 +148,42 @@ class _DuroodManagementItem extends StatelessWidget {
     final theme = Theme.of(context);
     
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
+        contentPadding: const EdgeInsets.all(12),
         leading: Container(
-          width: 48,
-          height: 48,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             color: theme.colorScheme.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
             CupertinoIcons.book,
             color: theme.colorScheme.primary,
+            size: 20,
           ),
         ),
         title: Text(
           durood.name,
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 16),
         ),
         subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.only(top: 2),
           child: Text(
             durood.target == 0 ? 'Unlimited' : 'Target: ${durood.target}',
-            style: theme.textTheme.bodySmall,
+            style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
           ),
         ),
         trailing: isDefault
@@ -333,7 +334,6 @@ class _AddEditDuroodScreenState extends State<AddEditDuroodScreen> {
               decoration: InputDecoration(
                 labelText: 'Name',
                 hintText: 'e.g., Morning Dhikr, Ayatul Kursi',
-                prefixIcon: const Icon(CupertinoIcons.textformat),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -355,7 +355,6 @@ class _AddEditDuroodScreenState extends State<AddEditDuroodScreen> {
               decoration: InputDecoration(
                 labelText: 'Target Count',
                 hintText: 'e.g., 100',
-                prefixIcon: const Icon(CupertinoIcons.number),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
