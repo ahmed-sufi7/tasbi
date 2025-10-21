@@ -151,7 +151,7 @@ class _ClockFacePainter extends CustomPainter {
         ..strokeCap = StrokeCap.round;
 
       final tickLength = isMajorTick ? 12.0 : 8.0;
-      final innerRadius = radius - strokeWidth / 2 - 4;
+      final innerRadius = radius - strokeWidth / 2 - 10; // Increased gap from 4 to 12
       final outerRadius = innerRadius - tickLength;
 
       final startPoint = Offset(
@@ -237,6 +237,28 @@ class _ProgressRingPainter extends CustomPainter {
       false,
       progressPaint,
     );
+
+    // Draw dots on the progress ring (layered on top of solid arc)
+    final dotCount = 120; // Increased from 60 for more dots
+    final dotRadius = 1.5; // Reduced from 3.0 for smaller dots
+    final dotPaint = Paint()
+      ..color = Colors.white // White dots to stand out on blue arc
+      ..style = PaintingStyle.fill;
+
+    for (int i = 0; i < dotCount; i++) {
+      final dotProgress = i / dotCount;
+      if (dotProgress <= progress) {
+        final angle = -math.pi / 2 + (2 * math.pi * dotProgress);
+        final dotX = center.dx + radius * math.cos(angle);
+        final dotY = center.dy + radius * math.sin(angle);
+        
+        canvas.drawCircle(
+          Offset(dotX, dotY),
+          dotRadius,
+          dotPaint,
+        );
+      }
+    }
     
     // Draw endpoint badge icon (anchored to progress ring endpoint)
     // Use endpointProgress for badge position so it continues moving
@@ -248,30 +270,26 @@ class _ProgressRingPainter extends CustomPainter {
       final badgeX = center.dx + badgeRadius * math.cos(endAngle);
       final badgeY = center.dy + badgeRadius * math.sin(endAngle);
       
-      // Draw badge container (rounded square)
-      final badgeRect = RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: Offset(badgeX, badgeY),
-          width: 44,
-          height: 44,
-        ),
-        const Radius.circular(12),
-      );
-      
+      // Draw small circular badge
       final badgePaint = Paint()
         ..color = const Color(0xFF1E90FF) // primary_accent
         ..style = PaintingStyle.fill;
       
-      canvas.drawRRect(badgeRect, badgePaint);
+      // Outer circle (badge container)
+      canvas.drawCircle(
+        Offset(badgeX, badgeY),
+        20, // Increased from 16 for larger badge
+        badgePaint,
+      );
       
-      // Draw icon (simple circle/dot representing the endpoint)
+      // Inner white circle (icon indicator)
       final iconPaint = Paint()
         ..color = Colors.white
         ..style = PaintingStyle.fill;
       
       canvas.drawCircle(
         Offset(badgeX, badgeY),
-        6,
+        5, // Reduced from 8 for smaller inner dot
         iconPaint,
       );
     }

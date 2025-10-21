@@ -154,14 +154,21 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     }
   }
 
-  void _saveAndReset() {
+  void _saveAndReset() async {
     final counterProvider = context.read<CounterProvider>();
     final duroodProvider = context.read<DuroodProvider>();
+    final currentDurood = duroodProvider.selectedDurood;
     
-    counterProvider.completeSession();
+    // Save the current session
+    await counterProvider.completeSession();
     
-    // Clear selection to return to default unlimited mode
-    duroodProvider.clearSelection();
+    // If there's a selected durood, restart it; otherwise go to default unlimited
+    if (currentDurood != null) {
+      await counterProvider.startSession(currentDurood);
+    } else {
+      // Clear selection to return to default unlimited mode
+      duroodProvider.clearSelection();
+    }
     
     // Show interstitial ad occasionally
     if (counterProvider.currentCount % 5 == 0) {
@@ -229,8 +236,8 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                             progress: counterProvider.progress,
                             endpointProgress: counterProvider.endpointProgress,
                             currentCount: counterProvider.currentCount,
-                            size: 320,
-                            strokeWidth: 24,
+                            size: 340, // Increased from 320 to make the ring larger
+                            strokeWidth: 28, // Increased from 24 for thicker ring
                             showClockFace: true,
                             showMilestones: !counterProvider.isUnlimitedMode,
                             milestones: const [100, 300, 500, 1000],
