@@ -109,7 +109,7 @@ class DuroodSelector extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Select Durood/Tasbi',
+                      'Select Durood/Tasbeeh',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     Row(

@@ -75,7 +75,7 @@ class FCMService {
       // Show local notification using NotificationService
       NotificationService.instance.showNotification(
         id: message.hashCode,
-        title: notification.title ?? 'Digital Tasbi',
+        title: notification.title ?? 'Digital Tasbeeh',
         body: notification.body ?? '',
         payload: message.data.toString(),
       );

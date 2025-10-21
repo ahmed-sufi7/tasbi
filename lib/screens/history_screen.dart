@@ -325,7 +325,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
           ],
           const SizedBox(height: 24),
           Text(
-            'Count by Tasbi',
+            'Count by Tasbeeh',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),

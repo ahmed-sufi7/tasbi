@@ -148,7 +148,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     
     // Show notification
     NotificationService.instance.showCompletionNotification(
-      duroodProvider.selectedDurood?.name ?? 'Tasbi',
+      duroodProvider.selectedDurood?.name ?? 'Tasbeeh',
       counterProvider.currentCount,
     );
     
@@ -175,7 +175,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
             child: const Text('Save & Restart'),
             onPressed: () {
               Navigator.pop(context);
-              _saveAndRestartSameTasbi();
+              _saveAndRestartSameTasbeeh();
             },
           ),
         ],
@@ -183,7 +183,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     );
   }
 
-  void _saveAndRestartSameTasbi() async {
+  void _saveAndRestartSameTasbeeh() async {
     final counterProvider = context.read<CounterProvider>();
     final duroodProvider = context.read<DuroodProvider>();
     final currentDurood = duroodProvider.selectedDurood;
@@ -351,7 +351,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
         children: [
           const SizedBox(width: 48), // Balanced spacing
           Text(
-            'Digital Tasbi',
+            'Digital Tasbeeh',
             style: theme.textTheme.titleLarge,
           ),
           IconButton(

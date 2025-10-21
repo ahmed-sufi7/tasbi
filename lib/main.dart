@@ -83,7 +83,7 @@ class MyApp extends StatelessWidget {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
           return MaterialApp(
-            title: 'Digital Tasbi',
+            title: 'Digital Tasbeeh',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,

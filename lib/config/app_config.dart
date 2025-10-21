@@ -1,6 +1,6 @@
 class AppConfig {
   // App Information
-  static const String appName = 'Digital Tasbi';
+  static const String appName = 'Digital Tasbeeh';
   static const String appVersion = '1.0.0';
   
   // Database
@@ -18,10 +18,10 @@ class AppConfig {
   
   // Notification Settings
   static const String notificationChannelId = 'digital_tasbi_notifications';
-  static const String notificationChannelName = 'Digital Tasbi Reminders';
+  static const String notificationChannelName = 'Digital Tasbeeh Reminders';
   static const String notificationChannelDescription = 'Reminders for durood and tasbi counting';
   
-  // Default Durood/Tasbi Presets
+  // Default Durood/Tasbeeh Presets
   static const List<Map<String, dynamic>> defaultDuroods = [
     {
       'name': 'دورود إبراهيم',

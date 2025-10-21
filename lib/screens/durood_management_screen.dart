@@ -13,7 +13,7 @@ class DuroodManagementScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manage Tasbi'),
+        title: const Text('Manage Tasbeeh'),
         leading: IconButton(
           icon: const Icon(CupertinoIcons.back),
           onPressed: () => Navigator.pop(context),
@@ -51,7 +51,7 @@ class DuroodManagementScreen extends StatelessWidget {
                             Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: Text(
-                                'Default Tasbi',
+                                'Default Tasbeeh',
                                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -67,7 +67,7 @@ class DuroodManagementScreen extends StatelessWidget {
                             Padding(
                               padding: const EdgeInsets.only(top: 16, bottom: 12),
                               child: Text(
-                                'Custom Tasbi',
+                                'Custom Tasbeeh',
                                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -104,7 +104,7 @@ class DuroodManagementScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'No Custom Tasbi Yet',
+              'No Custom Tasbeeh Yet',
               style: theme.textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),
@@ -263,7 +263,7 @@ class _DuroodManagementItem extends StatelessWidget {
                 if (success) {
                   HapticHelper.success();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tasbi deleted successfully')),
+                    const SnackBar(content: Text('Tasbeeh deleted successfully')),
                   );
                 }
               }
@@ -311,7 +311,7 @@ class _AddEditDuroodScreenState extends State<AddEditDuroodScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Tasbi' : 'Add Custom Tasbi'),
+        title: Text(isEditing ? 'Edit Tasbeeh' : 'Add Custom Tasbeeh'),
         leading: IconButton(
           icon: const Icon(CupertinoIcons.xmark),
           onPressed: () => Navigator.pop(context),
@@ -435,14 +435,14 @@ class _AddEditDuroodScreenState extends State<AddEditDuroodScreen> {
           
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Tasbi created! Select it from the list to start counting'),
+              content: Text('Tasbeeh created! Select it from the list to start counting'),
             ),
           );
         } else {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Tasbi updated successfully'),
+              content: Text('Tasbeeh updated successfully'),
             ),
           );
         }

@@ -164,7 +164,7 @@ class NotificationService {
       if (notificationTime.isEnabled) {
         await scheduleDailyNotification(
           id: i,
-          title: 'Digital Tasbi Reminder',
+          title: 'Digital Tasbeeh Reminder',
           body: notificationTime.message ?? 'Time to count your tasbi!',
           hour: notificationTime.hour,
           minute: notificationTime.minute,

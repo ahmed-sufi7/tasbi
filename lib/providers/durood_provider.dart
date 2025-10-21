@@ -14,18 +14,18 @@ class DuroodProvider extends ChangeNotifier {
 
   DuroodProvider() {
     loadDuroods();
-    _ensureDefaultTasbiExists();
+    _ensureDefaultTasbeehExists();
   }
 
   // Ensure default salawat tasbi exists
-  Future<void> _ensureDefaultTasbiExists() async {
+  Future<void> _ensureDefaultTasbeehExists() async {
     try {
       final duroods = await _db.getAllDuroods();
       final hasDefault = duroods.any((d) => d.isDefault && d.arabic == 'صَلَّى ٱللّٰهُ عَلَيْهِ وَآلِهِ وَسَلَّمَ');
       
       if (!hasDefault) {
         // Create default salawat tasbi
-        final defaultTasbi = Durood(
+        final defaultTasbeeh = Durood(
           name: 'Salawat/Durood',
           arabic: 'صَلَّى ٱللّٰهُ عَلَيْهِ وَآلِهِ وَسَلَّمَ',
           transliteration: 'Ṣallā Allāhu ʿalayhi wa-ālihī wa-sallam',
@@ -34,7 +34,7 @@ class DuroodProvider extends ChangeNotifier {
           isDefault: true,
         );
         
-        await _db.createDurood(defaultTasbi);
+        await _db.createDurood(defaultTasbeeh);
         await loadDuroods();
       }
       
