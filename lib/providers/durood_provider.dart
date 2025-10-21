@@ -75,9 +75,8 @@ class DuroodProvider extends ChangeNotifier {
     try {
       final id = await _db.createDurood(durood);
       await loadDuroods();
-      // Select the newly created durood
-      final newDurood = _duroods.firstWhere((d) => d.id == id);
-      _selectedDurood = newDurood;
+      // Don't automatically select the newly created durood
+      // Let the user manually select it from the list
       notifyListeners();
       return true;
     } catch (e) {

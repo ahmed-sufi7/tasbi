@@ -429,17 +429,14 @@ class _AddEditDuroodScreenState extends State<AddEditDuroodScreen> {
       if (success) {
         HapticHelper.success();
         
-        // If adding new tasbi, select it and close all screens to go back to counter
+        // If adding new tasbi, just close this screen and stay in management screen
         if (!isEditing) {
-          // The newly created durood is already selected by the provider
-          // Pop this screen
-          Navigator.pop(context);
-          // Pop the management screen to return to counter
+          // Pop this screen only (stay in management screen)
           Navigator.pop(context);
           
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Tasbi created! Start counting by tapping anywhere'),
+              content: Text('Tasbi created! Select it from the list to start counting'),
             ),
           );
         } else {

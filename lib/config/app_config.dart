@@ -52,7 +52,7 @@ class AppConfig {
       'arabic': 'اللّهُ أَكْبَرُ',
       'transliteration': 'Allahu Akbar',
       'translation': 'Allah is the Greatest',
-      'target': 34,
+      'target': 33,
       'isDefault': true,
     },
     {
