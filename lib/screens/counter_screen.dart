@@ -215,10 +215,10 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
         child: SafeArea(
           child: Column(
             children: [
-              // App Bar
+              // Simplified App Bar
               _buildAppBar(theme, duroodProvider),
               
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
             
             // Counter Display
             Expanded(
@@ -229,6 +229,11 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        // Horizontal action bar
+                        _buildActionBar(theme, counterProvider),
+                        
+                        const SizedBox(height: 24),
+                        
                         // Clock-face progress ring
                         RotationTransition(
                           turns: _rotateAnimation,
@@ -236,8 +241,8 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                             progress: counterProvider.progress,
                             endpointProgress: counterProvider.endpointProgress,
                             currentCount: counterProvider.currentCount,
-                            size: 340, // Increased from 320 to make the ring larger
-                            strokeWidth: 28, // Increased from 24 for thicker ring
+                            size: 340,
+                            strokeWidth: 28,
                             showClockFace: true,
                             showMilestones: !counterProvider.isUnlimitedMode,
                             milestones: const [100, 300, 500, 1000],
@@ -249,15 +254,11 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                         
                         // Bottom label
                         _buildBottomLabel(theme, counterProvider, selectedDurood),
+                        
+                        // Add bottom spacing for floating nav bar
+                        const SizedBox(height: 100),
                       ],
                     ),
-                  ),
-                  
-                  // Top-right action buttons
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: _buildTopRightButtons(theme, counterProvider),
                   ),
                 ],
               ),
@@ -282,40 +283,102 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            icon: const Icon(CupertinoIcons.chart_bar),
-            onPressed: () {
-              Navigator.push(
-                context,
-                CupertinoPageRoute(builder: (_) => const HistoryScreen()),
-              );
-            },
-          ),
+          const SizedBox(width: 48), // Balanced spacing
           Text(
             'Digital Tasbi',
             style: theme.textTheme.titleLarge,
           ),
-          Row(
-            children: [
-              // Create Button
-              IconButton(
-                icon: const Icon(CupertinoIcons.add_circled),
-                onPressed: () {
-                  _showCreateDuroodSheet(duroodProvider);
-                },
-              ),
-              IconButton(
-                icon: const Icon(CupertinoIcons.settings),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    CupertinoPageRoute(builder: (_) => const SettingsScreen()),
-                  );
-                },
-              ),
-            ],
+          IconButton(
+            icon: const Icon(CupertinoIcons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                CupertinoPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActionBar(ThemeData theme, CounterProvider counterProvider) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      margin: const EdgeInsets.symmetric(horizontal: 40),
+      decoration: BoxDecoration(
+        color: const Color(0xFF3A3A3A).withOpacity(0.3), // Same grey as ring background
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Sound button
+          _buildActionButton(
+            icon: CupertinoIcons.volume_up,
+            onTap: () {
+              // TODO: Toggle sound
+              HapticHelper.light();
+            },
+          ),
+          const SizedBox(width: 12),
+          
+          // Vibrate button
+          _buildActionButton(
+            icon: CupertinoIcons.device_phone_portrait,
+            onTap: () {
+              // TODO: Toggle vibration
+              HapticHelper.light();
+            },
+          ),
+          const SizedBox(width: 12),
+          
+          // Undo button (minus)
+          _buildActionButton(
+            icon: CupertinoIcons.minus,
+            isEnabled: counterProvider.currentCount > 0,
+            onTap: () {
+              counterProvider.decrement();
+              HapticHelper.light();
+            },
+          ),
+          const SizedBox(width: 12),
+          
+          // Restart button
+          _buildActionButton(
+            icon: CupertinoIcons.arrow_clockwise,
+            isEnabled: counterProvider.isSessionActive && counterProvider.currentCount > 0,
+            onTap: () {
+              _showResetDialog();
+            },
+          ),
+          const SizedBox(width: 12),
+          
+          // Rate button
+          _buildActionButton(
+            icon: CupertinoIcons.star,
+            onTap: () {
+              // TODO: Open rate dialog/store
+              HapticHelper.light();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    bool isEnabled = true,
+  }) {
+    return GestureDetector(
+      onTap: isEnabled ? onTap : null,
+      child: Icon(
+        icon,
+        size: 20,
+        color: Colors.white.withOpacity(0.8), // Always bright like other icons
       ),
     );
   }

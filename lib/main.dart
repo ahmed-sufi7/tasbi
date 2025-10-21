@@ -11,7 +11,7 @@ import 'services/notification_service.dart';
 import 'services/purchase_service.dart';
 import 'services/fcm_service.dart';
 import 'config/app_theme.dart';
-import 'screens/counter_screen.dart';
+import 'screens/main_navigation_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -88,7 +88,7 @@ class MyApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
-            home: const CounterScreen(),
+            home: const MainNavigationScreen(),
           );
         },
       ),
