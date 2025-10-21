@@ -18,9 +18,25 @@ class CounterProvider extends ChangeNotifier {
 
   // Get progress percentage
   double get progress {
-    if (_isUnlimitedMode) return 0;
+    if (_isUnlimitedMode) {
+      // For unlimited mode, fill gradually to 100, then stay full
+      if (_currentCount == 0) return 0.0;
+      if (_currentCount >= 100) return 1.0; // Keep ring full after 100
+      return (_currentCount / 100.0).clamp(0.0, 1.0);
+    }
     if (_currentSession == null || _currentSession!.target == 0) return 0;
     return (_currentCount / _currentSession!.target).clamp(0.0, 1.0);
+  }
+  
+  // Get continuous progress for endpoint badge (doesn't stop at 1.0)
+  double get endpointProgress {
+    if (_isUnlimitedMode) {
+      if (_currentCount == 0) return 0.0;
+      // Keep moving the endpoint continuously without resetting
+      // After 100, continue from where it was (don't reset to 0)
+      return (_currentCount / 100.0);
+    }
+    return progress;
   }
 
   // Check if target is reached

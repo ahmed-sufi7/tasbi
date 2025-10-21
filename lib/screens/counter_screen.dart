@@ -8,7 +8,7 @@ import '../models/durood.dart';
 import '../services/ad_service.dart';
 import '../services/notification_service.dart';
 import '../utils/haptic_helper.dart';
-import '../widgets/progress_ring.dart';
+import '../widgets/clock_face_progress_ring.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
 import 'durood_management_screen.dart';
@@ -109,27 +109,49 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
   }
 
   void _showCompletionDialog() {
+    final duroodProvider = context.read<DuroodProvider>();
+    final selectedDurood = duroodProvider.selectedDurood;
+    
     showCupertinoDialog(
       context: context,
       builder: (context) => CupertinoAlertDialog(
         title: const Text('🎉 Congratulations!'),
-        content: const Text('You have completed your target!'),
+        content: Text('You have completed ${selectedDurood?.name ?? "your target"}!'),
         actions: [
           CupertinoDialogAction(
-            child: const Text('Continue'),
+            child: const Text('Continue Counting'),
             onPressed: () => Navigator.pop(context),
           ),
           CupertinoDialogAction(
             isDefaultAction: true,
-            child: const Text('Save & Start New'),
+            child: const Text('Save & Restart'),
             onPressed: () {
               Navigator.pop(context);
-              _saveAndReset();
+              _saveAndRestartSameTasbi();
             },
           ),
         ],
       ),
     );
+  }
+
+  void _saveAndRestartSameTasbi() async {
+    final counterProvider = context.read<CounterProvider>();
+    final duroodProvider = context.read<DuroodProvider>();
+    final currentDurood = duroodProvider.selectedDurood;
+    
+    // Save the completed session
+    await counterProvider.completeSession();
+    
+    // Restart the same tasbi (don't clear selection)
+    if (currentDurood != null) {
+      await counterProvider.startSession(currentDurood);
+    }
+    
+    // Show interstitial ad occasionally
+    if (counterProvider.currentCount % 5 == 0) {
+      AdService.instance.showInterstitialAd();
+    }
   }
 
   void _saveAndReset() {
@@ -189,28 +211,47 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
               // App Bar
               _buildAppBar(theme, duroodProvider),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 40),
             
             // Counter Display
             Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Stack(
                 children: [
-                  // Progress Ring
-                  RotationTransition(
-                    turns: _rotateAnimation,
-                    child: ProgressRing(
-                      progress: counterProvider.progress,
-                      size: 280,
-                      strokeWidth: 20,
-                      child: _buildCounterDisplay(theme, counterProvider, selectedDurood),
+                  // Main counter ring
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Clock-face progress ring
+                        RotationTransition(
+                          turns: _rotateAnimation,
+                          child: ClockFaceProgressRing(
+                            progress: counterProvider.progress,
+                            endpointProgress: counterProvider.endpointProgress,
+                            currentCount: counterProvider.currentCount,
+                            size: 320,
+                            strokeWidth: 24,
+                            showClockFace: true,
+                            showMilestones: !counterProvider.isUnlimitedMode,
+                            milestones: const [100, 300, 500, 1000],
+                            child: _buildCounterDisplay(theme, counterProvider),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        // Bottom label
+                        _buildBottomLabel(theme, counterProvider, selectedDurood),
+                      ],
                     ),
                   ),
                   
-                  const SizedBox(height: 40),
-                  
-                  // Action Buttons
-                  _buildActionButtons(theme, counterProvider),
+                  // Top-right action buttons
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: _buildTopRightButtons(theme, counterProvider),
+                  ),
                 ],
               ),
             ),
@@ -272,125 +313,142 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     );
   }
 
-  Widget _buildCounterDisplay(ThemeData theme, CounterProvider counterProvider, Durood? selectedDurood) {
+  Widget _buildCounterDisplay(ThemeData theme, CounterProvider counterProvider) {
+    final isUnlimited = counterProvider.isUnlimitedMode;
+    final hasTarget = !isUnlimited && counterProvider.currentSession != null;
+    
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 400), // 300-500ms as per design system
+      curve: Curves.easeOut,
+      tween: Tween<double>(begin: 0.95, end: 1.0),
+      key: ValueKey<int>(counterProvider.currentCount), // Trigger animation on count change
+      builder: (context, scale, child) {
+        return Transform.scale(
+          scale: scale,
+          child: Opacity(
+            opacity: scale, // Fade in with scale
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Large count display (as per design system: 72-96px, weight 200-300)
+                Text(
+                  '${counterProvider.currentCount}',
+                  style: const TextStyle(
+                    fontSize: 88,
+                    fontWeight: FontWeight.w200,
+                    color: Color(0xFF1E90FF), // primary_accent from design system
+                    fontFeatures: [FontFeature.tabularFigures()],
+                    letterSpacing: -2,
+                    height: 1.0,
+                  ),
+                ),
+                
+                // Target count (for non-unlimited mode)
+                if (hasTarget)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '/ ${counterProvider.currentSession!.target}',
+                      style: const TextStyle(
+                        fontSize: 24, // time_unit size: 24-28px from design system
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFF8A8A8A), // text_secondary from design system
+                        letterSpacing: 0,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
+  Widget _buildBottomLabel(ThemeData theme, CounterProvider counterProvider, Durood? selectedDurood) {
     final isUnlimited = counterProvider.isUnlimitedMode || selectedDurood == null;
     
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Tasbi Name or Default Text
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Text(
-            isUnlimited ? 'صَلَّى ٱللّٰهُ عَلَيْهِ وَآلِهِ وَسَلَّمَ' : selectedDurood!.name,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w600,
-              fontSize: isUnlimited ? 20 : null,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        // Counter
-        Text(
-          '${counterProvider.currentCount}',
-          style: theme.textTheme.displayLarge?.copyWith(
-            fontSize: 64,
-            fontWeight: FontWeight.bold,
-            fontFeatures: [const FontFeature.tabularFigures()],
-          ),
-        ),
-        const SizedBox(height: 8),
-        // Target or Unlimited text
-        if (!isUnlimited)
-          Text(
-            'of ${counterProvider.currentSession?.target ?? selectedDurood!.target}',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.textTheme.bodySmall?.color,
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildActionButtons(ThemeData theme, CounterProvider counterProvider) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildActionButton(
-            icon: CupertinoIcons.minus_circle,
-            label: 'Undo',
-            onTap: counterProvider.currentCount > 0
-                ? () {
-                    counterProvider.decrement();
-                    HapticHelper.light();
-                  }
-                : null,
-            theme: theme,
-          ),
-          _buildActionButton(
-            icon: CupertinoIcons.arrow_clockwise,
-            label: 'Reset',
-            onTap: counterProvider.isSessionActive && counterProvider.currentCount > 0
-                ? _showResetDialog
-                : null,
-            theme: theme,
-          ),
-        ],
+      child: Text(
+        isUnlimited ? 'صَلَّى ٱللّٰهُ عَلَيْهِ وَآلِهِ وَسَلَّمَ' : selectedDurood!.name,
+        style: const TextStyle(
+          fontSize: 22, // bottom_label: 20-24px from design system
+          fontWeight: FontWeight.w400, // Regular weight
+          color: Colors.white,
+          letterSpacing: 0.5,
+          height: 1.3,
+        ),
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
 
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback? onTap,
-    required ThemeData theme,
-  }) {
-    final isEnabled = onTap != null;
-    
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        decoration: BoxDecoration(
-          color: isEnabled
-              ? theme.colorScheme.surface
-              : theme.colorScheme.surface.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: isEnabled
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
+  Widget _buildTopRightButtons(ThemeData theme, CounterProvider counterProvider) {
+    return Row(
+      children: [
+        // Undo button
+        GestureDetector(
+          onTap: counterProvider.currentCount > 0
+              ? () {
+                  counterProvider.decrement();
+                  HapticHelper.light();
+                }
               : null,
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              size: 28,
-              color: isEnabled
-                  ? theme.iconTheme.color
-                  : theme.iconTheme.color?.withOpacity(0.3),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: isEnabled
-                    ? theme.textTheme.labelMedium?.color
-                    : theme.textTheme.labelMedium?.color?.withOpacity(0.3),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: counterProvider.currentCount > 0
+                  ? const Color(0xFF1A1A1A)
+                  : const Color(0xFF1A1A1A).withOpacity(0.5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: const Color(0xFF3A3A3A),
+                width: 1,
               ),
             ),
-          ],
+            child: Icon(
+              CupertinoIcons.arrow_counterclockwise,
+              size: 20,
+              color: counterProvider.currentCount > 0
+                  ? Colors.white
+                  : Colors.white.withOpacity(0.3),
+            ),
+          ),
         ),
-      ),
+        
+        const SizedBox(width: 12),
+        
+        // Reset button
+        GestureDetector(
+          onTap: counterProvider.isSessionActive && counterProvider.currentCount > 0
+              ? _showResetDialog
+              : null,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: counterProvider.isSessionActive && counterProvider.currentCount > 0
+                  ? const Color(0xFF1A1A1A)
+                  : const Color(0xFF1A1A1A).withOpacity(0.5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: const Color(0xFF3A3A3A),
+                width: 1,
+              ),
+            ),
+            child: Icon(
+              CupertinoIcons.arrow_clockwise,
+              size: 20,
+              color: counterProvider.isSessionActive && counterProvider.currentCount > 0
+                  ? Colors.white
+                  : Colors.white.withOpacity(0.3),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
