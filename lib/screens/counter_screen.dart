@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../providers/counter_provider.dart';
 import '../providers/durood_provider.dart';
 import '../models/durood.dart';
@@ -23,6 +24,8 @@ class CounterScreen extends StatefulWidget {
 class _CounterScreenState extends State<CounterScreen> with TickerProviderStateMixin {
   late AnimationController _rotateController;
   late Animation<double> _rotateAnimation;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isSoundEnabled = false;
 
   @override
   void initState() {
@@ -37,6 +40,10 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     _rotateAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _rotateController, curve: Curves.elasticOut),
     );
+
+    // Initialize audio player with low latency mode
+    _audioPlayer.setReleaseMode(ReleaseMode.stop);
+    _audioPlayer.setPlayerMode(PlayerMode.lowLatency);
 
     // Reset to default unlimited mode on app start
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -56,6 +63,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
   @override
   void dispose() {
     _rotateController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -77,6 +85,11 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     // Increment counter
     counterProvider.increment();
     
+    // Play sound if enabled
+    if (_isSoundEnabled) {
+      _playTapSound();
+    }
+    
     // Haptic feedback
     HapticHelper.light();
     
@@ -86,6 +99,27 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
         counterProvider.currentCount == counterProvider.currentSession!.target) {
       _celebrateCompletion();
     }
+  }
+
+  void _playTapSound() async {
+    try {
+      debugPrint('Attempting to play tap sound...');
+      // Use a fresh play for each tap
+      await _audioPlayer.stop();
+      await _audioPlayer.setVolume(1.0); // Increase volume to full
+      await _audioPlayer.play(AssetSource('sounds/tap.mp3'));
+      debugPrint('Sound played successfully');
+    } catch (e) {
+      debugPrint('Error playing sound: $e');
+    }
+  }
+
+  void _toggleSound() {
+    setState(() {
+      _isSoundEnabled = !_isSoundEnabled;
+    });
+    HapticHelper.light();
+    debugPrint('Sound enabled: $_isSoundEnabled');
   }
 
   void _celebrateCompletion() {
@@ -335,10 +369,8 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
           // Sound button
           _buildActionButton(
             icon: CupertinoIcons.volume_up,
-            onTap: () {
-              // TODO: Toggle sound
-              HapticHelper.light();
-            },
+            isActive: _isSoundEnabled,
+            onTap: _toggleSound,
           ),
           const SizedBox(width: 12),
           
@@ -390,13 +422,16 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     required IconData icon,
     required VoidCallback onTap,
     bool isEnabled = true,
+    bool isActive = false,
   }) {
     return GestureDetector(
       onTap: isEnabled ? onTap : null,
       child: Icon(
         icon,
         size: 20,
-        color: Colors.white.withOpacity(0.8), // Always bright like other icons
+        color: isActive 
+            ? const Color(0xFF1E90FF) // Blue when active
+            : Colors.white.withOpacity(0.8), // White when inactive
       ),
     );
   }

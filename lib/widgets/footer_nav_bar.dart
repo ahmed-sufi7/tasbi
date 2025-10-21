@@ -53,8 +53,8 @@ class FooterNavBar extends StatelessWidget {
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(30),
                   topRight: Radius.circular(30),
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
+                  bottomLeft: Radius.circular(5),
+                  bottomRight: Radius.circular(5),
                 ),
                 border: Border.all(
                   color: const Color(0xFF3A3A3A),
