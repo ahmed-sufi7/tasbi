@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -25,7 +26,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
   late AnimationController _rotateController;
   late Animation<double> _rotateAnimation;
   final AudioPlayer _audioPlayer = AudioPlayer();
-  bool _isSoundEnabled = false;
+  bool _isSoundEnabled = true; // Sound enabled by default
   bool _isVibrateEnabled = false;
 
   @override
@@ -93,9 +94,10 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     
     // Vibration/Haptic feedback based on vibrate toggle
     if (_isVibrateEnabled) {
-      HapticHelper.heavy(); // Heavy haptic for noticeable vibration when enabled
+      HapticFeedback.vibrate(); // Actual vibration when enabled
+    } else {
+      HapticHelper.light(); // Light haptic feedback when disabled
     }
-    // No haptic feedback when vibrate is disabled
     
     // Check if target reached (only for non-unlimited mode)
     if (!counterProvider.isUnlimitedMode && 
@@ -398,6 +400,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
           _buildActionButton(
             icon: CupertinoIcons.minus,
             isEnabled: counterProvider.currentCount > 0,
+            alwaysBlue: true,
             onTap: () {
               counterProvider.decrement();
               HapticHelper.light();
@@ -409,6 +412,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
           _buildActionButton(
             icon: CupertinoIcons.arrow_clockwise,
             isEnabled: counterProvider.isSessionActive && counterProvider.currentCount > 0,
+            alwaysBlue: true,
             onTap: () {
               _showResetDialog();
             },
@@ -418,6 +422,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
           // Rate button
           _buildActionButton(
             icon: CupertinoIcons.star,
+            alwaysBlue: true,
             onTap: () {
               // TODO: Open rate dialog/store
               HapticHelper.light();
@@ -433,14 +438,15 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     required VoidCallback onTap,
     bool isEnabled = true,
     bool isActive = false,
+    bool alwaysBlue = false,
   }) {
     return GestureDetector(
       onTap: isEnabled ? onTap : null,
       child: Icon(
         icon,
         size: 20,
-        color: isActive 
-            ? const Color(0xFF1E90FF) // Blue when active
+        color: (isActive || alwaysBlue)
+            ? const Color(0xFF1E90FF) // Blue when active or always blue
             : Colors.white.withOpacity(0.8), // White when inactive
       ),
     );
