@@ -112,8 +112,8 @@ class CounterProvider extends ChangeNotifier {
         _currentSession != null && 
         _currentCount > _currentSession!.target && 
         _currentSession!.target > 0) {
-      // Reset count and increment rounds
-      _currentCount = 0;
+      // Reset count to 1 and increment rounds
+      _currentCount = 1;
       _rounds++;
     }
     
