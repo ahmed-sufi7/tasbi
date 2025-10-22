@@ -308,9 +308,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 200,
+            height: 220,
             child: FutureBuilder<Map<String, int>>(
-              future: _getDailyCounts(),
+              future: _getPeriodicCounts(_selectedPeriod),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CupertinoActivityIndicator());
@@ -328,19 +328,48 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 }
                 
                 final data = snapshot.data!;
-                final spots = <FlSpot>[];
-                final titles = <int, String>{};
+                final sortedEntries = data.entries.toList();
                 
-                int index = 0;
-                data.forEach((key, value) {
-                  spots.add(FlSpot(index.toDouble(), value.toDouble()));
-                  titles[index] = key;
-                  index++;
-                });
+                // For week view, ensure correct order
+                if (_selectedPeriod == 'week') {
+                  final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                  sortedEntries.sort((a, b) => weekdays.indexOf(a.key).compareTo(weekdays.indexOf(b.key)));
+                }
                 
                 return BarChart(
                   BarChartData(
-                    gridData: FlGridData(show: false),
+                    alignment: BarChartAlignment.spaceAround,
+                    maxY: sortedEntries.map((e) => e.value.toDouble()).reduce((a, b) => a > b ? a : b) * 1.3,
+                    barTouchData: BarTouchData(
+                      enabled: true,
+                      touchTooltipData: BarTouchTooltipData(
+                        tooltipRoundedRadius: 8,
+                        tooltipMargin: 8,
+                        getTooltipItem: (
+                          BarChartGroupData group,
+                          int groupIndex,
+                          BarChartRodData rod,
+                          int rodIndex,
+                        ) {
+                          return BarTooltipItem(
+                            '${sortedEntries[group.x].key}\n',
+                            const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            children: <TextSpan>[
+                              TextSpan(
+                                text: '${sortedEntries[group.x].value} counts',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
                     titlesData: FlTitlesData(
                       show: true,
                       bottomTitles: AxisTitles(
@@ -348,19 +377,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           showTitles: true,
                           getTitlesWidget: (value, meta) {
                             final index = value.toInt();
-                            if (titles.containsKey(index)) {
-                              return Text(
-                                titles[index]!,
-                                style: theme.textTheme.bodySmall,
+                            if (index >= 0 && index < sortedEntries.length) {
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text(
+                                  sortedEntries[index].key,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ) ?? const TextStyle(),
+                                ),
                               );
                             }
                             return const Text('');
                           },
-                          reservedSize: 30,
+                          reservedSize: 32,
                         ),
                       ),
                       leftTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
+                        sideTitles: SideTitles(showTitles: false), // Remove vertical labels
                       ),
                       topTitles: AxisTitles(
                         sideTitles: SideTitles(showTitles: false),
@@ -369,22 +404,33 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         sideTitles: SideTitles(showTitles: false),
                       ),
                     ),
-                    borderData: FlBorderData(show: false),
-                    barGroups: spots.map((spot) {
+                    borderData: FlBorderData(
+                      show: false, // Remove border
+                    ),
+                    gridData: FlGridData(
+                      show: false, // Remove all grid lines
+                    ),
+                    barGroups: sortedEntries.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final key = entry.value.key;
+                      final value = entry.value.value;
+                      
                       return BarChartGroupData(
-                        x: spot.x.toInt(),
+                        x: index,
                         barRods: [
                           BarChartRodData(
-                            toY: spot.y,
-                            color: theme.colorScheme.primary,
+                            toY: value.toDouble(),
+                            color: _getBarColor(value, theme),
                             width: 16,
-                            borderRadius: BorderRadius.zero,
-                            rodStackItems: [],
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: BorderSide(
+                              color: theme.colorScheme.primary.withOpacity(0.5),
+                              width: 1,
+                            ),
                           ),
                         ],
                       );
                     }).toList(),
-                    maxY: spots.map((e) => e.y).reduce((a, b) => a > b ? a : b) * 1.2,
                   ),
                 );
               },
@@ -393,6 +439,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ],
       ),
     );
+  }
+  
+  Color _getBarColor(int value, ThemeData theme) {
+    if (value == 0) return theme.dividerColor.withOpacity(0.2);
+    return theme.colorScheme.primary;
   }
 
   Widget _buildDistributionChart(ThemeData theme) {
@@ -599,6 +650,98 @@ class _HistoryScreenState extends State<HistoryScreen> {
         }),
       ],
     );
+  }
+
+  Future<Map<String, int>> _getPeriodicCounts(String period) async {
+    final sessions = await _getRecentSessions();
+    final periodCounts = <String, int>{};
+    
+    final now = DateTime.now();
+    
+    if (period == 'week') {
+      // Initialize weekdays with 0 counts
+      final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      for (final day in weekdays) {
+        periodCounts[day] = 0;
+      }
+      
+      // Aggregate counts by weekday for the current week
+      for (var session in sessions) {
+        final date = session.startTime;
+        // Check if the session is within the current week
+        if (_isInCurrentWeek(date)) {
+          final weekday = _getWeekdayAbbreviation(date.weekday);
+          periodCounts[weekday] = (periodCounts[weekday] ?? 0) + session.count;
+        }
+      }
+    } else if (period == 'month') {
+      // Initialize weeks with 0 counts
+      for (int i = 1; i <= 5; i++) {
+        periodCounts['W$i'] = 0;
+      }
+      
+      // Aggregate counts by week of month
+      for (var session in sessions) {
+        final date = session.startTime;
+        // Check if the session is within the current month
+        if (_isInCurrentMonth(date)) {
+          final weekOfMonth = _getWeekOfMonth(date);
+          if (weekOfMonth >= 1 && weekOfMonth <= 5) {
+            periodCounts['W$weekOfMonth'] = (periodCounts['W$weekOfMonth'] ?? 0) + session.count;
+          }
+        }
+      }
+    } else if (period == 'year') {
+      // Initialize months with 0 counts
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      for (final month in months) {
+        periodCounts[month] = 0;
+      }
+      
+      // Aggregate counts by month
+      for (var session in sessions) {
+        final date = session.startTime;
+        // Check if the session is within the current year
+        if (date.year == now.year) {
+          final monthAbbrev = _getMonthAbbreviation(date.month);
+          periodCounts[monthAbbrev] = (periodCounts[monthAbbrev] ?? 0) + session.count;
+        }
+      }
+    }
+    
+    return periodCounts;
+  }
+  
+  bool _isInCurrentWeek(DateTime date) {
+    final now = DateTime.now();
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    final endOfWeek = startOfWeek.add(const Duration(days: 6));
+    return date.isAfter(startOfWeek.subtract(const Duration(days: 1))) && 
+           date.isBefore(endOfWeek.add(const Duration(days: 1)));
+  }
+  
+  bool _isInCurrentMonth(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year && date.month == now.month;
+  }
+  
+  String _getWeekdayAbbreviation(int weekday) {
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return weekdays[(weekday + 5) % 7]; // Adjust for DateTime.weekday (1=Monday)
+  }
+  
+  String _getMonthAbbreviation(int month) {
+    const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[month];
+  }
+  
+  int _getWeekOfMonth(DateTime date) {
+    final firstDayOfMonth = DateTime(date.year, date.month, 1);
+    final weekOffset = firstDayOfMonth.weekday - 1;
+    final adjustedDate = date.day + weekOffset;
+    return (adjustedDate / 7).ceil();
   }
 }
 
