@@ -110,12 +110,8 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
       HapticHelper.light(); // Light haptic feedback when disabled
     }
     
-    // Check if target reached (only for non-unlimited mode)
-    if (!counterProvider.isUnlimitedMode && 
-        counterProvider.isTargetReached && 
-        counterProvider.currentCount == counterProvider.currentSession!.target) {
-      _celebrateCompletion();
-    }
+    // Note: We no longer show celebration popup when target is reached
+    // Instead, we automatically reset the count and increment rounds
   }
 
   void _playTapSound() async {
@@ -466,6 +462,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
   Widget _buildCounterDisplay(ThemeData theme, CounterProvider counterProvider) {
     final isUnlimited = counterProvider.isUnlimitedMode;
     final hasTarget = !isUnlimited && counterProvider.currentSession != null;
+    final showRounds = !isUnlimited && counterProvider.rounds > 0;
     
     return TweenAnimationBuilder<double>(
       duration: const Duration(milliseconds: 400), // 300-500ms as per design system
@@ -505,6 +502,21 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                         color: Color(0xFF8A8A8A), // text_secondary from design system
                         letterSpacing: 0,
                         height: 1.2,
+                      ),
+                    ),
+                  ),
+                  
+                // Rounds display (for non-unlimited mode with completed rounds)
+                if (showRounds)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Round ${counterProvider.rounds}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF1E90FF),
+                        letterSpacing: 0.3,
                       ),
                     ),
                   ),

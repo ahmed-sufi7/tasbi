@@ -8,11 +8,13 @@ class CounterProvider extends ChangeNotifier {
   final DatabaseHelper _db = DatabaseHelper.instance;
   
   int _currentCount = 0;
+  int _rounds = 0;
   CounterSession? _currentSession;
   bool _isSessionActive = false;
   bool _isUnlimitedMode = false;
 
   int get currentCount => _currentCount;
+  int get rounds => _rounds;
   CounterSession? get currentSession => _currentSession;
   bool get isSessionActive => _isSessionActive;
   bool get isUnlimitedMode => _isUnlimitedMode;
@@ -42,11 +44,13 @@ class CounterProvider extends ChangeNotifier {
     return (_currentCount / _currentSession!.target);
   }
 
-  // Check if target is reached
+  // Check if target is reached (for initial target completion)
   bool get isTargetReached {
     if (_isUnlimitedMode) return false;
     if (_currentSession == null) return false;
-    return _currentCount >= _currentSession!.target;
+    // For rounds functionality, we only consider target reached for the first completion
+    // Subsequent completions are handled by the rounds logic
+    return _rounds == 0 && _currentCount >= _currentSession!.target;
   }
 
   // Start unlimited counting session (with default tasbeeh)
@@ -64,12 +68,14 @@ class CounterProvider extends ChangeNotifier {
       final id = await _db.createSession(session);
       _currentSession = session.copyWith(id: id);
       _currentCount = 0;
+      _rounds = 0;
       _isSessionActive = true;
       _isUnlimitedMode = true;
       notifyListeners();
     } else {
       // Fallback to original behavior if default durood not found
       _currentCount = 0;
+      _rounds = 0;
       _currentSession = null;
       _isSessionActive = true;
       _isUnlimitedMode = true;
@@ -88,6 +94,7 @@ class CounterProvider extends ChangeNotifier {
     final id = await _db.createSession(session);
     _currentSession = session.copyWith(id: id);
     _currentCount = 0;
+    _rounds = 0;
     _isSessionActive = true;
     // Set unlimited mode if target is 0
     _isUnlimitedMode = durood.target == 0;
@@ -99,6 +106,17 @@ class CounterProvider extends ChangeNotifier {
     if (!_isSessionActive) return;
     
     _currentCount++;
+    
+    // Check if target is reached (only for limited mode)
+    if (!_isUnlimitedMode && 
+        _currentSession != null && 
+        _currentCount > _currentSession!.target && 
+        _currentSession!.target > 0) {
+      // Reset count and increment rounds
+      _currentCount = 0;
+      _rounds++;
+    }
+    
     notifyListeners();
   }
 
@@ -113,6 +131,7 @@ class CounterProvider extends ChangeNotifier {
   // Reset counter
   void reset() {
     _currentCount = 0;
+    _rounds = 0;
     notifyListeners();
   }
 
@@ -134,6 +153,7 @@ class CounterProvider extends ChangeNotifier {
       // Reset counters
       _currentSession = null;
       _currentCount = 0;
+      _rounds = 0;
       _isSessionActive = false;
       _isUnlimitedMode = false;
       notifyListeners();
@@ -152,6 +172,7 @@ class CounterProvider extends ChangeNotifier {
     await _db.updateSession(updatedSession);
     _currentSession = null;
     _currentCount = 0;
+    _rounds = 0;
     _isSessionActive = false;
     _isUnlimitedMode = false;
     notifyListeners();
@@ -162,6 +183,7 @@ class CounterProvider extends ChangeNotifier {
     if (_isUnlimitedMode) {
       // Just reset for unlimited mode
       _currentCount = 0;
+      _rounds = 0;
       _isSessionActive = false;
       _isUnlimitedMode = false;
       notifyListeners();
@@ -180,6 +202,7 @@ class CounterProvider extends ChangeNotifier {
     await _db.updateSession(updatedSession);
     _currentSession = null;
     _currentCount = 0;
+    _rounds = 0;
     _isSessionActive = false;
     _isUnlimitedMode = false;
     notifyListeners();
@@ -189,6 +212,7 @@ class CounterProvider extends ChangeNotifier {
   Future<void> cancelSession() async {
     if (_isUnlimitedMode) {
       _currentCount = 0;
+      _rounds = 0;
       _isSessionActive = false;
       _isUnlimitedMode = false;
       notifyListeners();
@@ -200,6 +224,7 @@ class CounterProvider extends ChangeNotifier {
     }
     _currentSession = null;
     _currentCount = 0;
+    _rounds = 0;
     _isSessionActive = false;
     _isUnlimitedMode = false;
     notifyListeners();
@@ -209,6 +234,7 @@ class CounterProvider extends ChangeNotifier {
   Future<void> resumeSession(CounterSession session) async {
     _currentSession = session;
     _currentCount = session.count;
+    _rounds = 0; // Reset rounds when resuming a session
     _isSessionActive = true;
     _isUnlimitedMode = false;
     notifyListeners();
