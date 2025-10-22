@@ -112,6 +112,9 @@ class CounterProvider extends ChangeNotifier {
         _currentSession != null && 
         _currentCount > _currentSession!.target && 
         _currentSession!.target > 0) {
+      // Save completed round as a completed session
+      _saveCompletedRound();
+      
       // Reset count to 1 and increment rounds
       _currentCount = 1;
       _rounds++;
@@ -120,6 +123,20 @@ class CounterProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+    // Save completed round as a completed session
+  Future<void> _saveCompletedRound() async {
+    if (_currentSession == null) return;
+    
+    // Create a completed session for the completed round
+    final completedRoundSession = _currentSession!.copyWith(
+      count: _currentSession!.target, // Save with target count as completed
+      endTime: DateTime.now(),
+      isCompleted: true,
+    );
+    
+    await _db.updateSession(completedRoundSession);
+  }
+  
   // Decrement counter
   void decrement() {
     if (!_isSessionActive || _currentCount <= 0) return;
