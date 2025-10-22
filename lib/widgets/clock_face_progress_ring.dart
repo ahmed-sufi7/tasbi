@@ -100,7 +100,7 @@ class ClockFaceProgressRing extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1E90FF).withOpacity(0.3),
+              color: const Color(0xFF1E90FF).withValues(alpha: 0.3),
               blurRadius: 8,
               spreadRadius: 2,
             ),
@@ -132,7 +132,7 @@ class _ClockFacePainter extends CustomPainter {
 
     // Draw background ring
     final bgPaint = Paint()
-      ..color = const Color(0xFF3A3A3A).withOpacity(0.3)
+      ..color = const Color(0xFF3A3A3A).withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth;
 
@@ -146,7 +146,7 @@ class _ClockFacePainter extends CustomPainter {
       final angle = (i * 3 - 90) * math.pi / 180;
       
       final tickPaint = Paint()
-        ..color = const Color(0xFF2A2A2A).withOpacity(0.4) // opacity 0.4 as per design system
+        ..color = const Color(0xFF2A2A2A).withValues(alpha: 0.4) // opacity 0.4 as per design system
         ..strokeWidth = isMajorTick ? 2 : 1
         ..strokeCap = StrokeCap.round;
 

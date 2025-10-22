@@ -59,19 +59,31 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
         
         // Add current active session to the list if it exists
         List<CounterSession> allSessions = List.from(sessions);
-        if (currentSession != null && counterProvider.isSessionActive) {
-          // Create a copy with current count
-          final activeSession = currentSession.copyWith(
-            count: currentCount,
-          );
-          allSessions.insert(0, activeSession);
+        if (counterProvider.isSessionActive && currentCount > 0) {
+          if (currentSession != null) {
+            // Create a copy with current count for limited mode sessions
+            final activeSession = currentSession.copyWith(
+              count: currentCount,
+            );
+            allSessions.insert(0, activeSession);
+          } else if (counterProvider.isUnlimitedMode) {
+            // Create a temporary session for unlimited mode (default tasbi)
+            final unlimitedSession = CounterSession(
+              duroodId: 'default',
+              count: currentCount,
+              target: 0,
+              startTime: DateTime.now(),
+              isCompleted: false,
+            );
+            allSessions.insert(0, unlimitedSession);
+          }
         }
         
         // Calculate accurate statistics including active session
         int totalCount = stats['totalCount'] as int? ?? 0;
         int completedSessions = stats['completedSessions'] as int? ?? 0;
         
-        if (currentSession != null && counterProvider.isSessionActive) {
+        if (counterProvider.isSessionActive) {
           totalCount += currentCount;
         }
         
@@ -117,29 +129,57 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
     }
   }
 
+  Widget _buildAppBar(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(CupertinoIcons.back),
+            onPressed: () => Navigator.pop(context),
+          ),
+          Text(
+            'Statistics',
+            style: theme.textTheme.titleLarge,
+          ),
+          const SizedBox(width: 48), // Balanced spacing
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Statistics'),
-        leading: IconButton(
-          icon: const Icon(CupertinoIcons.back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Sessions'),
-            Tab(text: 'Statistics'),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Custom App Bar to match home screen
+            _buildAppBar(theme),
+            
+            // Tab bar
+            TabBar(
+              controller: _tabController,
+              tabs: const [
+                Tab(text: 'Statistics'),
+                Tab(text: 'Sessions'),
+              ],
+            ),
+            
+            // Content
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildStatisticsTab(),
+                  _buildSessionsTab(),
+                ],
+              ),
+            ),
           ],
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildSessionsTab(),
-          _buildStatisticsTab(),
-        ],
       ),
     );
   }
@@ -284,11 +324,18 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
     
     // Add current active session count
     if (counterProvider.isSessionActive && 
-        counterProvider.currentSession != null && 
-        duroodProvider.selectedDurood != null) {
-      final currentDuroodName = duroodProvider.selectedDurood!.name;
-      duroodCounts[currentDuroodName] = 
-          (duroodCounts[currentDuroodName] ?? 0) + counterProvider.currentCount;
+        counterProvider.currentCount > 0) {
+      if (duroodProvider.selectedDurood != null) {
+        // Add count for selected durood
+        final currentDuroodName = duroodProvider.selectedDurood!.name;
+        duroodCounts[currentDuroodName] = 
+            (duroodCounts[currentDuroodName] ?? 0) + counterProvider.currentCount;
+      } else if (counterProvider.isUnlimitedMode) {
+        // Add count for unlimited mode (default tasbi)
+        const defaultTasbiName = 'Default Tasbeeh';
+        duroodCounts[defaultTasbiName] = 
+            (duroodCounts[defaultTasbiName] ?? 0) + counterProvider.currentCount;
+      }
     }
 
     return RefreshIndicator(
@@ -475,7 +522,9 @@ class _SessionItem extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      durood?.name ?? 'Unknown',
+                      session.duroodId == 'default' 
+                          ? 'Default Tasbeeh' 
+                          : (durood?.name ?? 'Unknown'),
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),

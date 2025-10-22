@@ -62,7 +62,7 @@ class FooterNavBar extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withValues(alpha: 0.3),
                     blurRadius: 15,
                     offset: const Offset(0, 5),
                   ),
@@ -119,7 +119,7 @@ class FooterNavBar extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
+                        color: Colors.black.withValues(alpha: 0.25),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -168,50 +168,6 @@ class _NavImageButton extends StatelessWidget {
           width: 22,
           height: 22,
           fit: BoxFit.contain,
-        ),
-      ),
-    );
-  }
-}
-
-class _NavIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onTap;
-  final bool isActive;
-  final Color iconColor;
-
-  const _NavIconButton({
-    Key? key,
-    required this.icon,
-    this.onTap,
-    this.isActive = false,
-    this.iconColor = Colors.white,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final activeBg = isActive 
-        ? const Color(0xFF1E90FF).withOpacity(0.15) 
-        : Colors.transparent;
-    final activeIconColor = isActive 
-        ? const Color(0xFF1E90FF) 
-        : iconColor.withOpacity(0.6);
-    
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: activeBg,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(
-          icon,
-          color: activeIconColor,
-          size: 22,
         ),
       ),
     );

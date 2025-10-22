@@ -73,7 +73,7 @@ class DuroodProvider extends ChangeNotifier {
 
   Future<bool> addDurood(Durood durood) async {
     try {
-      final id = await _db.createDurood(durood);
+      await _db.createDurood(durood);
       await loadDuroods();
       // Don't automatically select the newly created durood
       // Let the user manually select it from the list

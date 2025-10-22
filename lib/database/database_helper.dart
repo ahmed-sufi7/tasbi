@@ -205,6 +205,20 @@ class DatabaseHelper {
     return result.map((map) => Durood.fromMap(map)).toList();
   }
 
+  Future<Durood?> getDefaultUnlimitedDurood() async {
+    final db = await database;
+    final result = await db.query(
+      'duroods',
+      where: 'isDefault = ? AND target = ?',
+      whereArgs: [1, 0],
+    );
+    
+    if (result.isNotEmpty) {
+      return Durood.fromMap(result.first);
+    }
+    return null;
+  }
+
   Future<int> updateDurood(Durood durood) async {
     final db = await database;
     return db.update(
@@ -321,9 +335,9 @@ class DatabaseHelper {
   Future<Map<String, dynamic>> getStatistics() async {
     final db = await database;
     
-    // Total count across all sessions
+    // Total count across all sessions (completed and saved but incomplete)
     final totalCountResult = await db.rawQuery(
-      'SELECT SUM(count) as total FROM counter_sessions WHERE isCompleted = 1'
+      'SELECT SUM(count) as total FROM counter_sessions WHERE isCompleted = 1 OR count > 0'
     );
     final totalCount = totalCountResult.first['total'] as int? ?? 0;
 
@@ -333,12 +347,12 @@ class DatabaseHelper {
     );
     final completedSessions = completedSessionsResult.first['count'] as int? ?? 0;
 
-    // Count by durood
+    // Count by durood (including saved but incomplete sessions)
     final countByDuroodResult = await db.rawQuery('''
       SELECT d.name, SUM(cs.count) as total
       FROM counter_sessions cs
       JOIN duroods d ON cs.duroodId = d.id
-      WHERE cs.isCompleted = 1
+      WHERE cs.isCompleted = 1 OR cs.count > 0
       GROUP BY cs.duroodId
       ORDER BY total DESC
     ''');

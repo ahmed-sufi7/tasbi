@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../widgets/footer_nav_bar.dart';
 import '../providers/counter_provider.dart';
@@ -16,9 +17,47 @@ class MainNavigationScreen extends StatefulWidget {
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
+class _MainNavigationScreenState extends State<MainNavigationScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    
+    // Load any active session when app starts
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final counterProvider = context.read<CounterProvider>();
+      final duroodProvider = context.read<DuroodProvider>();
+      counterProvider.loadActiveSession(duroodProvider);
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final counterProvider = context.read<CounterProvider>();
+    final duroodProvider = context.read<DuroodProvider>();
+    
+    // Save the current session when app is paused or inactive
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      if (counterProvider.isSessionActive && counterProvider.currentCount > 0) {
+        // Save but don't complete the session
+        counterProvider.saveSession(notes: 'Auto-saved on app background');
+      }
+    }
+    // Load any active session when app resumes
+    else if (state == AppLifecycleState.resumed) {
+      counterProvider.loadActiveSession(duroodProvider);
+    }
+  }
 
   void _onTabChanged(int index) {
     if (index == _currentIndex) return;
@@ -42,12 +81,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       context: context,
       builder: (context) => const DuroodManagementScreen(),
     );
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
   }
 
   @override

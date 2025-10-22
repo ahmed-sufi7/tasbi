@@ -31,13 +31,13 @@ class CounterButton extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: theme.colorScheme.primary.withOpacity(0.3),
+              color: theme.colorScheme.primary.withValues(alpha: 0.3),
               blurRadius: 20,
               offset: const Offset(0, 10),
               spreadRadius: 0,
             ),
             BoxShadow(
-              color: theme.colorScheme.secondary.withOpacity(0.2),
+              color: theme.colorScheme.secondary.withValues(alpha: 0.2),
               blurRadius: 40,
               offset: const Offset(0, 15),
               spreadRadius: 0,

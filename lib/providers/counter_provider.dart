@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/counter_session.dart';
 import '../models/durood.dart';
 import '../database/database_helper.dart';
+import 'durood_provider.dart';
 
 class CounterProvider extends ChangeNotifier {
   final DatabaseHelper _db = DatabaseHelper.instance;
@@ -48,13 +49,32 @@ class CounterProvider extends ChangeNotifier {
     return _currentCount >= _currentSession!.target;
   }
 
-  // Start unlimited counting session (no tasbi selected)
-  void startUnlimitedSession() {
-    _currentCount = 0;
-    _currentSession = null;
-    _isSessionActive = true;
-    _isUnlimitedMode = true;
-    notifyListeners();
+  // Start unlimited counting session (with default tasbeeh)
+  Future<void> startUnlimitedSession() async {
+    // Get the default unlimited tasbeeh
+    final defaultDurood = await _db.getDefaultUnlimitedDurood();
+    
+    if (defaultDurood != null) {
+      final session = CounterSession(
+        duroodId: defaultDurood.id!,
+        count: 0,
+        target: 0, // Unlimited
+      );
+
+      final id = await _db.createSession(session);
+      _currentSession = session.copyWith(id: id);
+      _currentCount = 0;
+      _isSessionActive = true;
+      _isUnlimitedMode = true;
+      notifyListeners();
+    } else {
+      // Fallback to original behavior if default durood not found
+      _currentCount = 0;
+      _currentSession = null;
+      _isSessionActive = true;
+      _isUnlimitedMode = true;
+      notifyListeners();
+    }
   }
 
   // Start a new counter session
@@ -99,7 +119,20 @@ class CounterProvider extends ChangeNotifier {
   // Save current session
   Future<void> saveSession({String? notes}) async {
     if (_isUnlimitedMode) {
-      // Just reset for unlimited mode
+      // For unlimited mode, update the current session with the count
+      if (_currentSession != null && _currentCount > 0) {
+        final updatedSession = _currentSession!.copyWith(
+          count: _currentCount,
+          endTime: DateTime.now(),
+          isCompleted: false,
+          notes: notes,
+        );
+
+        await _db.updateSession(updatedSession);
+      }
+      
+      // Reset counters
+      _currentSession = null;
       _currentCount = 0;
       _isSessionActive = false;
       _isUnlimitedMode = false;
@@ -112,7 +145,7 @@ class CounterProvider extends ChangeNotifier {
     final updatedSession = _currentSession!.copyWith(
       count: _currentCount,
       endTime: DateTime.now(),
-      isCompleted: _currentCount >= _currentSession!.target,
+      isCompleted: false, // Keep as incomplete when just saving
       notes: notes,
     );
 
@@ -182,7 +215,7 @@ class CounterProvider extends ChangeNotifier {
   }
 
   // Load session if app was closed during active session
-  Future<void> loadActiveSession() async {
+  Future<void> loadActiveSession(DuroodProvider duroodProvider) async {
     // Check if there's an incomplete session from today
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
@@ -196,6 +229,13 @@ class CounterProvider extends ChangeNotifier {
       _currentSession = latestSession;
       _currentCount = latestSession.count;
       _isSessionActive = true;
+      
+      // Load the associated durood for this session
+      final durood = await _db.getDurood(latestSession.duroodId);
+      if (durood != null) {
+        duroodProvider.selectDurood(durood);
+      }
+      
       notifyListeners();
     }
   }

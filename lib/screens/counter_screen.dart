@@ -28,6 +28,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isSoundEnabled = true; // Sound enabled by default
   bool _isVibrateEnabled = false;
+  static bool _isFirstInitialization = true;
 
   @override
   void initState() {
@@ -47,23 +48,33 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
     _audioPlayer.setReleaseMode(ReleaseMode.stop);
     _audioPlayer.setPlayerMode(PlayerMode.lowLatency);
 
-    // Reset to default unlimited mode on app start
+    // Only reset to default unlimited mode on actual app start, not on navigation
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final counterProvider = context.read<CounterProvider>();
       final duroodProvider = context.read<DuroodProvider>();
       
-      // Clear any selected durood to show default
-      duroodProvider.clearSelection();
-      
-      // Cancel any active session to start fresh
-      if (counterProvider.isSessionActive) {
-        counterProvider.cancelSession();
+      // Only initialize default state on first app launch
+      if (_isFirstInitialization) {
+        // Clear any selected durood to show default
+        duroodProvider.clearSelection();
+        
+        // Start unlimited default counting
+        counterProvider.startUnlimitedSession();
+        
+        // Mark that initialization is complete
+        _isFirstInitialization = false;
       }
     });
   }
 
   @override
   void dispose() {
+    // Save current session before disposing
+    final counterProvider = context.read<CounterProvider>();
+    if (counterProvider.isSessionActive && counterProvider.currentCount > 0) {
+      counterProvider.saveSession();
+    }
+    
     _rotateController.dispose();
     _audioPlayer.dispose();
     super.dispose();
