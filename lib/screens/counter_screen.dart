@@ -284,7 +284,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                 ),
               ),
               
-              const SizedBox(height: 6),
+              const SizedBox(height: 24),
             
             // Counter Display
             Expanded(
@@ -298,7 +298,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                         // Horizontal action bar
                         _buildActionBar(theme, counterProvider),
                         
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                         
                         // Clock-face progress ring
                         RotationTransition(
