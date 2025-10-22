@@ -512,10 +512,10 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
       padding: const EdgeInsets.symmetric(horizontal: 40),
       child: Text(
         isUnlimited ? 'صَلَّى ٱللّٰهُ عَلَيْهِ وَآلِهِ وَسَلَّمَ' : selectedDurood!.name,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 18, // bottom_label: 20-24px from design system
           fontWeight: FontWeight.w400, // Regular weight
-          color: Colors.white,
+          color: theme.brightness == Brightness.dark ? Colors.white : Colors.black,
           letterSpacing: 0.5,
           height: 1.3,
         ),
