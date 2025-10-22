@@ -16,7 +16,7 @@ class HistoryScreen extends StatefulWidget {
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> {
+class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProviderStateMixin {
   final DatabaseHelper _db = DatabaseHelper.instance;
   
   Map<String, dynamic> _statistics = {};
@@ -24,10 +24,33 @@ class _HistoryScreenState extends State<HistoryScreen> {
   bool _isLoading = true;
   String _selectedPeriod = 'week'; // week, month, year
 
+  // Animation controller for bar chart transitions
+  late AnimationController _barChartAnimationController;
+  late Animation<double> _barChartAnimation;
+
   @override
   void initState() {
     super.initState();
     _loadData();
+    
+    // Initialize animation controller for bar chart
+    _barChartAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _barChartAnimation = CurvedAnimation(
+      parent: _barChartAnimationController,
+      curve: Curves.easeInOut,
+    );
+    
+    // Start the animation
+    _barChartAnimationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _barChartAnimationController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -336,6 +359,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   void _onPeriodChanged(String period) {
+    if (_selectedPeriod != period) {
+      // Reset animation when period changes
+      _barChartAnimationController.reset();
+      _barChartAnimationController.forward();
+    }
+    
     setState(() {
       _selectedPeriod = period;
     });
@@ -394,102 +423,111 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   sortedEntries.sort((a, b) => weekdays.indexOf(a.key).compareTo(weekdays.indexOf(b.key)));
                 }
                 
-                return BarChart(
-                  BarChartData(
-                    alignment: BarChartAlignment.spaceAround,
-                    maxY: sortedEntries.map((e) => e.value.toDouble()).reduce((a, b) => a > b ? a : b) * 1.3,
-                    barTouchData: BarTouchData(
-                      enabled: true,
-                      touchTooltipData: BarTouchTooltipData(
-                        tooltipRoundedRadius: 8,
-                        tooltipMargin: 8,
-                        getTooltipItem: (
-                          BarChartGroupData group,
-                          int groupIndex,
-                          BarChartRodData rod,
-                          int rodIndex,
-                        ) {
-                          return BarTooltipItem(
-                            '${sortedEntries[group.x].key}\n',
-                            const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                // Calculate maxY with a minimum value to avoid division by zero
+                double maxY = sortedEntries.map((e) => e.value.toDouble()).reduce((a, b) => a > b ? a : b) * 1.3;
+                if (maxY == 0) maxY = 1;
+                
+                return AnimatedBuilder(
+                  animation: _barChartAnimation,
+                  builder: (context, child) {
+                    return BarChart(
+                      BarChartData(
+                        alignment: BarChartAlignment.spaceAround,
+                        maxY: maxY,
+                        barTouchData: BarTouchData(
+                          enabled: true,
+                          touchTooltipData: BarTouchTooltipData(
+                            tooltipRoundedRadius: 8,
+                            tooltipMargin: 8,
+                            getTooltipItem: (
+                              BarChartGroupData group,
+                              int groupIndex,
+                              BarChartRodData rod,
+                              int rodIndex,
+                            ) {
+                              return BarTooltipItem(
+                                '${sortedEntries[group.x].key}\n',
+                                const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                children: <TextSpan>[
+                                  TextSpan(
+                                    text: '${sortedEntries[group.x].value} counts',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                        titlesData: FlTitlesData(
+                          show: true,
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              getTitlesWidget: (value, meta) {
+                                final index = value.toInt();
+                                if (index >= 0 && index < sortedEntries.length) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Text(
+                                      sortedEntries[index].key,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ) ?? const TextStyle(),
+                                    ),
+                                  );
+                                }
+                                return const Text('');
+                              },
+                              reservedSize: 32,
                             ),
-                            children: <TextSpan>[
-                              TextSpan(
-                                text: '${sortedEntries[group.x].value} counts',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          topTitles: AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          rightTitles: AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                        ),
+                        borderData: FlBorderData(
+                          show: false,
+                        ),
+                        gridData: FlGridData(
+                          show: false,
+                        ),
+                        barGroups: sortedEntries.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final key = entry.value.key;
+                          final value = entry.value.value;
+                          
+                          return BarChartGroupData(
+                            x: index,
+                            barRods: [
+                              BarChartRodData(
+                                toY: value.toDouble() * _barChartAnimation.value, // Apply animation
+                                color: _getBarColor(value, theme),
+                                width: 16,
+                                borderRadius: BorderRadius.circular(6),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary.withOpacity(0.5),
+                                  width: 1,
                                 ),
                               ),
                             ],
                           );
-                        },
+                        }).toList(),
                       ),
-                    ),
-                    titlesData: FlTitlesData(
-                      show: true,
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (value, meta) {
-                            final index = value.toInt();
-                            if (index >= 0 && index < sortedEntries.length) {
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Text(
-                                  sortedEntries[index].key,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ) ?? const TextStyle(),
-                                ),
-                              );
-                            }
-                            return const Text('');
-                          },
-                          reservedSize: 32,
-                        ),
-                      ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      topTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      rightTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                    ),
-                    borderData: FlBorderData(
-                      show: false,
-                    ),
-                    gridData: FlGridData(
-                      show: false,
-                    ),
-                    barGroups: sortedEntries.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final key = entry.value.key;
-                      final value = entry.value.value;
-                      
-                      return BarChartGroupData(
-                        x: index,
-                        barRods: [
-                          BarChartRodData(
-                            toY: value.toDouble(),
-                            color: _getBarColor(value, theme),
-                            width: 16,
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(
-                              color: theme.colorScheme.primary.withOpacity(0.5),
-                              width: 1,
-                            ),
-                          ),
-                        ],
-                      );
-                    }).toList(),
-                  ),
+                    );
+                  },
                 );
               },
             ),
