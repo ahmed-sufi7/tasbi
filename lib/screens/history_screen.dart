@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../models/counter_session.dart';
 import '../models/durood.dart';
 import '../database/database_helper.dart';
@@ -15,85 +16,46 @@ class HistoryScreen extends StatefulWidget {
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _HistoryScreenState extends State<HistoryScreen> {
   final DatabaseHelper _db = DatabaseHelper.instance;
   
-  List<CounterSession> _sessions = [];
   Map<String, dynamic> _statistics = {};
+  List<CounterSession> _recentSessions = [];
   bool _isLoading = true;
-  String _filterPeriod = 'all'; // all, today, week, month
+  String _selectedPeriod = 'week'; // week, month, year
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(_onTabChanged);
     _loadData();
-  }
-
-  void _onTabChanged() {
-    if (_tabController.indexIsChanging) {
-      _loadData();
-    }
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     
     try {
-      final sessions = await _getFilteredSessions();
       final stats = await _db.getStatistics();
+      final recentSessions = await _getRecentSessions();
       
       // Get current active session from provider
       if (mounted) {
         final counterProvider = context.read<CounterProvider>();
-        final currentSession = counterProvider.currentSession;
-        final currentCount = counterProvider.currentCount;
-        
-        // Add current active session to the list if it exists
-        List<CounterSession> allSessions = List.from(sessions);
-        if (counterProvider.isSessionActive && currentCount > 0) {
-          if (currentSession != null) {
-            // Create a copy with current count for limited mode sessions
-            final activeSession = currentSession.copyWith(
-              count: currentCount,
-            );
-            allSessions.insert(0, activeSession);
-          } else if (counterProvider.isUnlimitedMode) {
-            // Create a temporary session for unlimited mode (default tasbi)
-            final unlimitedSession = CounterSession(
-              duroodId: 'default',
-              count: currentCount,
-              target: 0,
-              startTime: DateTime.now(),
-              isCompleted: false,
-            );
-            allSessions.insert(0, unlimitedSession);
-          }
-        }
         
         // Calculate accurate statistics including active session
         int totalCount = stats['totalCount'] as int? ?? 0;
         int completedSessions = stats['completedSessions'] as int? ?? 0;
         
         if (counterProvider.isSessionActive) {
-          totalCount += currentCount;
+          totalCount += counterProvider.currentCount;
         }
         
         setState(() {
-          _sessions = allSessions;
           _statistics = {
             'totalCount': totalCount,
             'completedSessions': completedSessions,
             'countByDurood': stats['countByDurood'],
           };
+          _recentSessions = recentSessions;
           _isLoading = false;
         });
       }
@@ -105,28 +67,33 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
     }
   }
 
-  Future<List<CounterSession>> _getFilteredSessions() async {
+  Future<List<CounterSession>> _getRecentSessions() async {
     final now = DateTime.now();
+    final startDate = now.subtract(const Duration(days: 30)); // Last 30 days
+    return await _db.getSessionsByDateRange(startDate, now);
+  }
+
+  Future<Map<String, int>> _getDailyCounts() async {
+    final sessions = await _getRecentSessions();
+    final dailyCounts = <String, int>{};
     
-    switch (_filterPeriod) {
-      case 'today':
-        return await _db.getSessionsByDateRange(
-          DateHelper.startOfDay(now),
-          DateHelper.endOfDay(now),
-        );
-      case 'week':
-        return await _db.getSessionsByDateRange(
-          DateHelper.startOfWeek(now),
-          DateHelper.endOfWeek(now),
-        );
-      case 'month':
-        return await _db.getSessionsByDateRange(
-          DateHelper.startOfMonth(now),
-          DateHelper.endOfMonth(now),
-        );
-      default:
-        return await _db.getAllSessions();
+    // Initialize last 7 days with 0 counts
+    for (int i = 6; i >= 0; i--) {
+      final date = DateTime.now().subtract(Duration(days: i));
+      final dateKey = '${date.month}/${date.day}';
+      dailyCounts[dateKey] = 0;
     }
+    
+    // Aggregate counts by day
+    for (var session in sessions) {
+      final date = session.startTime;
+      final dateKey = '${date.month}/${date.day}';
+      if (dailyCounts.containsKey(dateKey)) {
+        dailyCounts[dateKey] = dailyCounts[dateKey]! + session.count;
+      }
+    }
+    
+    return dailyCounts;
   }
 
   Widget _buildAppBar(ThemeData theme) {
@@ -159,24 +126,11 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
             // Custom App Bar to match home screen
             _buildAppBar(theme),
             
-            // Tab bar
-            TabBar(
-              controller: _tabController,
-              tabs: const [
-                Tab(text: 'Statistics'),
-                Tab(text: 'Sessions'),
-              ],
-            ),
-            
             // Content
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildStatisticsTab(),
-                  _buildSessionsTab(),
-                ],
-              ),
+              child: _isLoading 
+                ? const Center(child: CupertinoActivityIndicator())
+                : _buildContent(theme),
             ),
           ],
         ),
@@ -184,258 +138,154 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildSessionsTab() {
-    return Column(
-      children: [
-        _buildFilterChips(),
-        Expanded(
-          child: _isLoading
-              ? const Center(child: CupertinoActivityIndicator())
-              : _sessions.isEmpty
-                  ? _buildEmptyState()
-                  : RefreshIndicator(
-                      onRefresh: _loadData,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.only(
-                          left: 16,
-                          right: 16,
-                          top: 8,
-                          bottom: 100, // Extra padding for floating footer
-                        ),
-                        itemCount: _sessions.length,
-                        itemBuilder: (context, index) {
-                          return _SessionItem(session: _sessions[index]);
-                        },
-                      ),
-                    ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFilterChips() {
-    final theme = Theme.of(context);
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _buildFilterChip('All Time', 'all', theme),
-            const SizedBox(width: 8),
-            _buildFilterChip('Today', 'today', theme),
-            const SizedBox(width: 8),
-            _buildFilterChip('This Week', 'week', theme),
-            const SizedBox(width: 8),
-            _buildFilterChip('This Month', 'month', theme),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, String value, ThemeData theme) {
-    final isSelected = _filterPeriod == value;
-    
-    return GestureDetector(
-      onTap: () {
-        setState(() => _filterPeriod = value);
-        _loadData();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? theme.colorScheme.primary
-              : theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? theme.colorScheme.primary
-                : theme.dividerColor,
-          ),
-        ),
-        child: Text(
-          label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: isSelected ? Colors.white : null,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    final theme = Theme.of(context);
-    
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              CupertinoIcons.clock,
-              size: 80,
-              color: theme.colorScheme.primary.withOpacity(0.3),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No History Yet',
-              style: theme.textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Start counting to see your history here',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.textTheme.bodySmall?.color,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatisticsTab() {
-    if (_isLoading) {
-      return const Center(child: CupertinoActivityIndicator());
-    }
-
-    final theme = Theme.of(context);
-    final counterProvider = context.watch<CounterProvider>();
-    final duroodProvider = context.watch<DuroodProvider>();
-    
-    final totalCount = _statistics['totalCount'] as int? ?? 0;
-    final completedSessions = _statistics['completedSessions'] as int? ?? 0;
-    final countByDurood = _statistics['countByDurood'] as List<dynamic>? ?? [];
-    
-    // Build count by durood map including current active session
-    final Map<String, int> duroodCounts = {};
-    for (var item in countByDurood) {
-      final name = item['name'] as String;
-      final count = item['total'] as int;
-      duroodCounts[name] = count;
-    }
-    
-    // Add current active session count
-    if (counterProvider.isSessionActive && 
-        counterProvider.currentCount > 0) {
-      if (duroodProvider.selectedDurood != null) {
-        // Add count for selected durood
-        final currentDuroodName = duroodProvider.selectedDurood!.name;
-        duroodCounts[currentDuroodName] = 
-            (duroodCounts[currentDuroodName] ?? 0) + counterProvider.currentCount;
-      } else if (counterProvider.isUnlimitedMode) {
-        // Add count for unlimited mode (default tasbi)
-        const defaultTasbiName = 'Default Tasbeeh';
-        duroodCounts[defaultTasbiName] = 
-            (duroodCounts[defaultTasbiName] ?? 0) + counterProvider.currentCount;
-      }
-    }
-
+  Widget _buildContent(ThemeData theme) {
     return RefreshIndicator(
       onRefresh: _loadData,
       child: ListView(
-        padding: const EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 20,
-          bottom: 100, // Extra padding for floating footer
-        ),
+        padding: const EdgeInsets.all(20),
         children: [
-          _buildStatCard(
-            title: 'Total Count',
-            value: totalCount.toString(),
-            icon: CupertinoIcons.square_stack_3d_up,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(height: 16),
-          _buildStatCard(
-            title: 'Completed Sessions',
-            value: completedSessions.toString(),
-            icon: CupertinoIcons.checkmark_seal,
-            color: theme.colorScheme.secondary,
-          ),
-          if (counterProvider.isSessionActive && counterProvider.currentCount > 0) ...[
-            const SizedBox(height: 16),
-            _buildStatCard(
-              title: 'Current Session',
-              value: counterProvider.isUnlimitedMode 
-                  ? '${counterProvider.currentCount}' 
-                  : '${counterProvider.currentCount} / ${counterProvider.currentSession?.target ?? 0}',
-              icon: CupertinoIcons.play_circle,
-              color: Colors.orange,
-            ),
-          ],
+          // Summary Cards
+          _buildSummaryCards(theme),
           const SizedBox(height: 24),
-          Text(
-            'Count by Tasbeeh',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (duroodCounts.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Text(
-                  'No data available yet',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.textTheme.bodySmall?.color,
-                  ),
-                ),
-              ),
-            )
-          else
-            ...duroodCounts.entries.map((entry) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        entry.key,
-                        style: theme.textTheme.bodyLarge,
-                      ),
-                    ),
-                    Text(
-                      entry.value.toString(),
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
+          
+          // Period Selector
+          _buildPeriodSelector(theme),
+          const SizedBox(height: 24),
+          
+          // Daily Activity Chart
+          _buildDailyActivityChart(theme),
+          const SizedBox(height: 32),
+          
+          // Distribution Chart
+          _buildDistributionChart(theme),
+          const SizedBox(height: 32),
+          
+          // Recent Activity
+          _buildRecentActivity(theme),
         ],
       ),
     );
   }
 
-  Widget _buildStatCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    final theme = Theme.of(context);
+  Widget _buildSummaryCards(ThemeData theme) {
+    final totalCount = _statistics['totalCount'] as int? ?? 0;
+    final completedSessions = _statistics['completedSessions'] as int? ?? 0;
     
+    return Row(
+      children: [
+        // Total Count Card
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: theme.colorScheme.primary.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  CupertinoIcons.square_stack_3d_up,
+                  color: theme.colorScheme.primary,
+                  size: 28,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Total Count',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.textTheme.bodySmall?.color,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  totalCount.toString(),
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        // Completed Sessions Card
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.secondary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: theme.colorScheme.secondary.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  CupertinoIcons.checkmark_seal,
+                  color: theme.colorScheme.secondary,
+                  size: 28,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Sessions',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.textTheme.bodySmall?.color,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  completedSessions.toString(),
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.secondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPeriodSelector(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: theme.dividerColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          _PeriodButton(
+            label: 'Week',
+            isSelected: _selectedPeriod == 'week',
+            onTap: () => setState(() => _selectedPeriod = 'week'),
+          ),
+          _PeriodButton(
+            label: 'Month',
+            isSelected: _selectedPeriod == 'month',
+            onTap: () => setState(() => _selectedPeriod = 'month'),
+          ),
+          _PeriodButton(
+            label: 'Year',
+            isSelected: _selectedPeriod == 'year',
+            onTap: () => setState(() => _selectedPeriod = 'year'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDailyActivityChart(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -447,38 +297,349 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+          Text(
+            'Daily Activity',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
             ),
-            child: Icon(icon, color: color, size: 28),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.textTheme.bodySmall?.color,
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 200,
+            child: FutureBuilder<Map<String, int>>(
+              future: _getDailyCounts(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CupertinoActivityIndicator());
+                }
+                
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No data available',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.textTheme.bodySmall?.color,
+                      ),
+                    ),
+                  );
+                }
+                
+                final data = snapshot.data!;
+                final spots = <FlSpot>[];
+                final titles = <int, String>{};
+                
+                int index = 0;
+                data.forEach((key, value) {
+                  spots.add(FlSpot(index.toDouble(), value.toDouble()));
+                  titles[index] = key;
+                  index++;
+                });
+                
+                return BarChart(
+                  BarChartData(
+                    gridData: FlGridData(show: false),
+                    titlesData: FlTitlesData(
+                      show: true,
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+                            if (titles.containsKey(index)) {
+                              return Text(
+                                titles[index]!,
+                                style: theme.textTheme.bodySmall,
+                              );
+                            }
+                            return const Text('');
+                          },
+                          reservedSize: 30,
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      rightTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    barGroups: spots.map((spot) {
+                      return BarChartGroupData(
+                        x: spot.x.toInt(),
+                        barRods: [
+                          BarChartRodData(
+                            toY: spot.y,
+                            color: theme.colorScheme.primary,
+                            width: 16,
+                            borderRadius: BorderRadius.zero,
+                            rodStackItems: [],
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                    maxY: spots.map((e) => e.y).reduce((a, b) => a > b ? a : b) * 1.2,
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDistributionChart(ThemeData theme) {
+    final countByDurood = _statistics['countByDurood'] as List<dynamic>? ?? [];
+    
+    if (countByDurood.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Distribution',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: Text(
+                'No data available',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.textTheme.bodySmall?.color,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // Calculate total for percentages
+    int total = 0;
+    for (var item in countByDurood) {
+      total += item['total'] as int;
+    }
+    
+    if (total == 0) {
+      return Container();
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Distribution',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 200,
+            child: PieChart(
+              PieChartData(
+                sectionsSpace: 2,
+                centerSpaceRadius: 50,
+                sections: _generatePieSections(countByDurood, total, theme),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ..._generateLegendItems(countByDurood, total, theme),
+        ],
+      ),
+    );
+  }
+
+  List<PieChartSectionData> _generatePieSections(List<dynamic> data, int total, ThemeData theme) {
+    final colors = [
+      theme.colorScheme.primary,
+      theme.colorScheme.secondary,
+      Colors.orange,
+      Colors.green,
+      Colors.purple,
+      Colors.teal,
+    ];
+    
+    final sections = <PieChartSectionData>[];
+    
+    for (int i = 0; i < data.length && i < colors.length; i++) {
+      final item = data[i];
+      final name = item['name'] as String;
+      final count = item['total'] as int;
+      final percentage = (count / total) * 100;
+      
+      sections.add(
+        PieChartSectionData(
+          color: colors[i],
+          value: percentage,
+          title: '${percentage.round()}%',
+          radius: 50,
+          titleStyle: theme.textTheme.bodySmall?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+    
+    return sections;
+  }
+
+  List<Widget> _generateLegendItems(List<dynamic> data, int total, ThemeData theme) {
+    final colors = [
+      theme.colorScheme.primary,
+      theme.colorScheme.secondary,
+      Colors.orange,
+      Colors.green,
+      Colors.purple,
+      Colors.teal,
+    ];
+    
+    final items = <Widget>[];
+    
+    for (int i = 0; i < data.length && i < colors.length; i++) {
+      final item = data[i];
+      final name = item['name'] as String;
+      final count = item['total'] as int;
+      final percentage = (count / total) * 100;
+      
+      items.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: colors[i],
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  name,
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ),
+              Text(
+                '${percentage.round()}%',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    return items;
+  }
+
+  Widget _buildRecentActivity(ThemeData theme) {
+    if (_recentSessions.isEmpty) {
+      return Container();
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Recent Activity',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ..._recentSessions.take(5).map((session) {
+          return FutureBuilder<Durood?>(
+            future: _db.getDurood(session.duroodId),
+            builder: (context, snapshot) {
+              final durood = snapshot.data;
+              return _SessionItem(session: session, durood: durood);
+            },
+          );
+        }),
+      ],
+    );
+  }
+}
+
+class _PeriodButton extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _PeriodButton({
+    Key? key,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected 
+                ? theme.colorScheme.primary 
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: isSelected 
+                  ? Colors.white 
+                  : theme.textTheme.bodySmall?.color,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -486,85 +647,78 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
 
 class _SessionItem extends StatelessWidget {
   final CounterSession session;
+  final Durood? durood;
 
-  const _SessionItem({Key? key, required this.session}) : super(key: key);
+  const _SessionItem({Key? key, required this.session, required this.durood}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final DatabaseHelper db = DatabaseHelper.instance;
     
-    return FutureBuilder<Durood?>(
-      future: db.getDurood(session.duroodId),
-      builder: (context, snapshot) {
-        final durood = snapshot.data;
-        
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: session.isCompleted
-                ? Border.all(color: theme.colorScheme.primary.withOpacity(0.3))
-                : null,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: session.isCompleted
+            ? Border.all(color: theme.colorScheme.primary.withOpacity(0.3))
+            : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      session.duroodId == 'default' 
-                          ? 'Default Tasbeeh' 
-                          : (durood?.name ?? 'Unknown'),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+              Expanded(
+                child: Text(
+                  session.duroodId == 'default' 
+                      ? 'Default Tasbeeh' 
+                      : (durood?.name ?? 'Unknown'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
-                  if (session.isCompleted)
-                    Icon(
-                      CupertinoIcons.checkmark_seal_fill,
-                      color: theme.colorScheme.primary,
-                      size: 24,
-                    ),
-                ],
+                ),
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildInfoChip(
-                    icon: CupertinoIcons.square_stack_3d_up,
-                    label: '${session.count} / ${session.target}',
-                    theme: theme,
-                  ),
-                  const SizedBox(width: 12),
-                  _buildInfoChip(
-                    icon: CupertinoIcons.time,
-                    label: DateHelper.formatDuration(session.duration),
-                    theme: theme,
-                  ),
-                ],
+              if (session.isCompleted)
+                Icon(
+                  CupertinoIcons.checkmark_seal_fill,
+                  color: theme.colorScheme.primary,
+                  size: 24,
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _buildInfoChip(
+                icon: CupertinoIcons.square_stack_3d_up,
+                label: '${session.count}',
+                theme: theme,
               ),
-              const SizedBox(height: 8),
-              Text(
-                DateHelper.formatDateTime(session.startTime),
-                style: theme.textTheme.bodySmall,
+              const SizedBox(width: 12),
+              _buildInfoChip(
+                icon: CupertinoIcons.time,
+                label: DateHelper.formatDuration(session.duration),
+                theme: theme,
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 8),
+          Text(
+            DateHelper.formatDateTime(session.startTime),
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+      ),
     );
   }
 
