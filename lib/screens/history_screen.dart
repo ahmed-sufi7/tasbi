@@ -148,11 +148,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           _buildSummaryCards(theme),
           const SizedBox(height: 24),
           
-          // Period Selector
-          _buildPeriodSelector(theme),
-          const SizedBox(height: 24),
-          
-          // Daily Activity Chart
+          // Daily Activity Chart (now includes period selector)
           _buildDailyActivityChart(theme),
           const SizedBox(height: 32),
           
@@ -256,31 +252,93 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _buildPeriodSelector(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(4),
+      height: 40,
       decoration: BoxDecoration(
         color: theme.dividerColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
-        children: [
-          _PeriodButton(
-            label: 'Week',
-            isSelected: _selectedPeriod == 'week',
-            onTap: () => setState(() => _selectedPeriod = 'week'),
-          ),
-          _PeriodButton(
-            label: 'Month',
-            isSelected: _selectedPeriod == 'month',
-            onTap: () => setState(() => _selectedPeriod = 'month'),
-          ),
-          _PeriodButton(
-            label: 'Year',
-            isSelected: _selectedPeriod == 'year',
-            onTap: () => setState(() => _selectedPeriod = 'year'),
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final buttonWidth = constraints.maxWidth / 3;
+          
+          return Stack(
+            children: [
+              // Animated toggle indicator
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                left: _getTogglePosition(buttonWidth),
+                top: 4,
+                bottom: 4,
+                width: buttonWidth - 8,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.colorScheme.primary.withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Buttons row
+              Row(
+                children: [
+                  _buildPeriodButton('Week', 'week', theme),
+                  _buildPeriodButton('Month', 'month', theme),
+                  _buildPeriodButton('Year', 'year', theme),
+                ],
+              ),
+            ],
+          );
+        },
       ),
     );
+  }
+
+  Widget _buildPeriodButton(String label, String period, ThemeData theme) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _onPeriodChanged(period),
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.all(8),
+          child: Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: _selectedPeriod == period
+                  ? Colors.white
+                  : theme.textTheme.bodySmall?.color,
+              fontWeight: _selectedPeriod == period ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  double _getTogglePosition(double buttonWidth) {
+    switch (_selectedPeriod) {
+      case 'week':
+        return 4.0; // First position
+      case 'month':
+        return 4.0 + buttonWidth; // Second position
+      case 'year':
+        return 4.0 + 2 * buttonWidth; // Third position
+      default:
+        return 4.0;
+    }
+  }
+
+  void _onPeriodChanged(String period) {
+    setState(() {
+      _selectedPeriod = period;
+    });
   }
 
   Widget _buildDailyActivityChart(ThemeData theme) {
@@ -395,7 +453,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                       ),
                       leftTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false), // Remove vertical labels
+                        sideTitles: SideTitles(showTitles: false),
                       ),
                       topTitles: AxisTitles(
                         sideTitles: SideTitles(showTitles: false),
@@ -405,10 +463,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       ),
                     ),
                     borderData: FlBorderData(
-                      show: false, // Remove border
+                      show: false,
                     ),
                     gridData: FlGridData(
-                      show: false, // Remove all grid lines
+                      show: false,
                     ),
                     barGroups: sortedEntries.asMap().entries.map((entry) {
                       final index = entry.key;
@@ -436,6 +494,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
               },
             ),
           ),
+          const SizedBox(height: 16),
+          // Period Selector inside the chart card
+          _buildPeriodSelector(theme),
         ],
       ),
     );
@@ -742,49 +803,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final weekOffset = firstDayOfMonth.weekday - 1;
     final adjustedDate = date.day + weekOffset;
     return (adjustedDate / 7).ceil();
-  }
-}
-
-class _PeriodButton extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _PeriodButton({
-    Key? key,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected 
-                ? theme.colorScheme.primary 
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: isSelected 
-                  ? Colors.white 
-                  : theme.textTheme.bodySmall?.color,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 
