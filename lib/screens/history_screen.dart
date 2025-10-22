@@ -365,7 +365,9 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
             const SizedBox(height: 16),
             _buildStatCard(
               title: 'Current Session',
-              value: '${counterProvider.currentCount} / ${counterProvider.currentSession?.target ?? 0}',
+              value: counterProvider.isUnlimitedMode 
+                  ? '${counterProvider.currentCount}' 
+                  : '${counterProvider.currentCount} / ${counterProvider.currentSession?.target ?? 0}',
               icon: CupertinoIcons.play_circle,
               color: Colors.orange,
             ),
