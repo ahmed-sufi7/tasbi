@@ -266,7 +266,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
               // Simplified App Bar
               _buildAppBar(theme, duroodProvider),
               
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               
               // Main Arabic heading
               Padding(
@@ -284,7 +284,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                 ),
               ),
               
-              const SizedBox(height: 12),
+              const SizedBox(height: 6),
             
             // Counter Display
             Expanded(
@@ -321,8 +321,8 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
                         // Bottom label
                         _buildBottomLabel(theme, counterProvider, selectedDurood),
                         
-                        // Add bottom spacing for floating nav bar
-                        const SizedBox(height: 100),
+                        // Add bottom spacing for floating nav bar and banner ad
+                        const SizedBox(height: 160), // Increased from 100 to accommodate banner ad (60) + spacing
                       ],
                     ),
                   ),
@@ -370,7 +370,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
 
   Widget _buildActionBar(ThemeData theme, CounterProvider counterProvider) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       margin: const EdgeInsets.symmetric(horizontal: 40),
       decoration: BoxDecoration(
         color: const Color(0xFF3A3A3A).withOpacity(0.3), // Same grey as ring background
@@ -386,7 +386,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
             isActive: _isSoundEnabled,
             onTap: _toggleSound,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           
           // Vibrate button
           _buildActionButton(
@@ -394,7 +394,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
             isActive: _isVibrateEnabled,
             onTap: _toggleVibrate,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           
           // Undo button (minus)
           _buildActionButton(
@@ -406,7 +406,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
               HapticHelper.light();
             },
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           
           // Restart button
           _buildActionButton(
@@ -417,7 +417,7 @@ class _CounterScreenState extends State<CounterScreen> with TickerProviderStateM
               _showResetDialog();
             },
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           
           // Rate button
           _buildActionButton(
