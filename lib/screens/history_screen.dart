@@ -388,7 +388,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Daily Activity',
+            'Activity Overview',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
