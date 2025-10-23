@@ -167,12 +167,24 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          // Summary Cards
-          _buildSummaryCards(theme),
+          // Summary Cards - Listen to CounterProvider for real-time updates
+          Consumer<CounterProvider>(
+            builder: (context, counterProvider, child) {
+              // Force rebuild when counter changes
+              counterProvider.currentCount;
+              return _buildSummaryCards(theme);
+            },
+          ),
           const SizedBox(height: 24),
           
-          // Daily Activity Chart (now includes period selector)
-          _buildDailyActivityChart(theme),
+          // Daily Activity Chart - Listen to CounterProvider for real-time updates
+          Consumer<CounterProvider>(
+            builder: (context, counterProvider, child) {
+              // Force rebuild when counter changes
+              counterProvider.currentCount;
+              return _buildDailyActivityChart(theme);
+            },
+          ),
           const SizedBox(height: 32),
           
           // Distribution Chart
@@ -423,8 +435,63 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                   sortedEntries.sort((a, b) => weekdays.indexOf(a.key).compareTo(weekdays.indexOf(b.key)));
                 }
                 
+                // Get current active session data for real-time update
+                final counterProvider = context.watch<CounterProvider>();
+                bool hasActiveSession = counterProvider.isSessionActive && counterProvider.currentCount > 0;
+                
+                // Create a new list with updated values to avoid modifying final values
+                List<MapEntry<String, int>> updatedEntries = [];
+                
+                // If we have an active session, we need to add today's count to the chart
+                if (hasActiveSession && _selectedPeriod == 'week') {
+                  // Find today's entry and add the current count
+                  final today = DateTime.now();
+                  final todayKey = _getWeekdayAbbreviation(today.weekday);
+                  
+                  // Update today's count with active session data
+                  for (var entry in sortedEntries) {
+                    if (entry.key == todayKey) {
+                      updatedEntries.add(MapEntry(entry.key, entry.value + counterProvider.currentCount));
+                    } else {
+                      updatedEntries.add(MapEntry(entry.key, entry.value));
+                    }
+                  }
+                } else if (hasActiveSession && _selectedPeriod == 'month') {
+                  // For month view, add to current week
+                  final today = DateTime.now();
+                  final weekOfMonth = _getWeekOfMonth(today);
+                  if (weekOfMonth >= 1 && weekOfMonth <= 5) {
+                    final weekKey = 'W$weekOfMonth';
+                    
+                    for (var entry in sortedEntries) {
+                      if (entry.key == weekKey) {
+                        updatedEntries.add(MapEntry(entry.key, entry.value + counterProvider.currentCount));
+                      } else {
+                        updatedEntries.add(MapEntry(entry.key, entry.value));
+                      }
+                    }
+                  } else {
+                    updatedEntries = List.from(sortedEntries);
+                  }
+                } else if (hasActiveSession && _selectedPeriod == 'year') {
+                  // For year view, add to current month
+                  final today = DateTime.now();
+                  final monthKey = _getMonthAbbreviation(today.month);
+                  
+                  for (var entry in sortedEntries) {
+                    if (entry.key == monthKey) {
+                      updatedEntries.add(MapEntry(entry.key, entry.value + counterProvider.currentCount));
+                    } else {
+                      updatedEntries.add(MapEntry(entry.key, entry.value));
+                    }
+                  }
+                } else {
+                  // No active session or not applicable, use original data
+                  updatedEntries = List.from(sortedEntries);
+                }
+                
                 // Calculate maxY with a minimum value to avoid division by zero
-                double maxY = sortedEntries.map((e) => e.value.toDouble()).reduce((a, b) => a > b ? a : b) * 1.3;
+                double maxY = updatedEntries.map((e) => e.value.toDouble()).reduce((a, b) => a > b ? a : b) * 1.3;
                 if (maxY == 0) maxY = 1;
                 
                 return AnimatedBuilder(
@@ -438,7 +505,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                           enabled: true,
                           touchTooltipData: BarTouchTooltipData(
                             tooltipRoundedRadius: 0, // Remove rounded corners
-                            tooltipMargin: 5, // Remove margin
+                            tooltipMargin: 0, // Remove margin
                             tooltipPadding: EdgeInsets.zero, // Remove padding
                             getTooltipItem: (
                               BarChartGroupData group,
@@ -447,11 +514,11 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                               int rodIndex,
                             ) {
                               return BarTooltipItem(
-                                '${sortedEntries[group.x].value} counts', // Show only the count value
+                                '${updatedEntries[group.x].value} counts', // Show only the count value
                                 TextStyle(
                                   color: theme.colorScheme.primary, // Use primary color
                                   fontWeight: FontWeight.w500, // Medium weight
-                                  fontSize: 12, // Font size
+                                  fontSize: 14, // Font size
                                   height: 1.0, // Normal line height
                                   backgroundColor: Colors.transparent, // Transparent background
                                 ),
@@ -471,13 +538,13 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                               showTitles: true,
                               getTitlesWidget: (value, meta) {
                                 final index = value.toInt();
-                                if (index >= 0 && index < sortedEntries.length) {
+                                if (index >= 0 && index < updatedEntries.length) {
                                   return Padding(
                                     padding: const EdgeInsets.only(top: 8),
                                     child: Text(
-                                      sortedEntries[index].key,
+                                      updatedEntries[index].key,
                                       style: theme.textTheme.bodySmall?.copyWith(
-                                        fontSize: 10,
+                                        fontSize: 10, // Reduced font size
                                         fontWeight: FontWeight.w500,
                                       ) ?? const TextStyle(),
                                     ),
@@ -485,7 +552,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                                 }
                                 return const Text('');
                               },
-                              reservedSize: 24,
+                              reservedSize: 24, // Reduced reserved size
                             ),
                           ),
                           leftTitles: AxisTitles(
@@ -504,7 +571,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                         gridData: FlGridData(
                           show: false,
                         ),
-                        barGroups: sortedEntries.asMap().entries.map((entry) {
+                        barGroups: updatedEntries.asMap().entries.map((entry) {
                           final index = entry.key;
                           final key = entry.value.key;
                           final value = entry.value.value;
