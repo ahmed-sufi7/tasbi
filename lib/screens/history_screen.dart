@@ -437,8 +437,9 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                         barTouchData: BarTouchData(
                           enabled: true,
                           touchTooltipData: BarTouchTooltipData(
-                            tooltipRoundedRadius: 8,
-                            tooltipMargin: 8,
+                            tooltipRoundedRadius: 0, // Remove rounded corners
+                            tooltipMargin: 5, // Remove margin
+                            tooltipPadding: EdgeInsets.zero, // Remove padding
                             getTooltipItem: (
                               BarChartGroupData group,
                               int groupIndex,
@@ -446,22 +447,21 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                               int rodIndex,
                             ) {
                               return BarTooltipItem(
-                                '${sortedEntries[group.x].key}\n',
-                                const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
+                                '${sortedEntries[group.x].value} counts', // Show only the count value
+                                TextStyle(
+                                  color: theme.colorScheme.primary, // Use primary color
+                                  fontWeight: FontWeight.w500, // Medium weight
+                                  fontSize: 12, // Font size
+                                  height: 1.0, // Normal line height
+                                  backgroundColor: Colors.transparent, // Transparent background
                                 ),
-                                children: <TextSpan>[
-                                  TextSpan(
-                                    text: '${sortedEntries[group.x].value} counts',
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
+                                textAlign: TextAlign.center, // Center the text
                               );
                             },
+                            // Remove background color
+                            getTooltipColor: (group) => Colors.transparent,
+                            // Remove border
+                            tooltipBorder: BorderSide.none,
                           ),
                         ),
                         titlesData: FlTitlesData(
@@ -477,7 +477,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                                     child: Text(
                                       sortedEntries[index].key,
                                       style: theme.textTheme.bodySmall?.copyWith(
-                                        fontSize: 12,
+                                        fontSize: 10,
                                         fontWeight: FontWeight.w500,
                                       ) ?? const TextStyle(),
                                     ),
@@ -485,7 +485,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                                 }
                                 return const Text('');
                               },
-                              reservedSize: 32,
+                              reservedSize: 24,
                             ),
                           ),
                           leftTitles: AxisTitles(
