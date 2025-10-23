@@ -187,8 +187,14 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
           ),
           const SizedBox(height: 32),
           
-          // Distribution Chart
-          _buildDistributionChart(theme),
+          // Distribution Chart - Listen to CounterProvider for real-time updates
+          Consumer<CounterProvider>(
+            builder: (context, counterProvider, child) {
+              // Force rebuild when counter changes
+              counterProvider.currentCount;
+              return _buildDistributionChart(theme);
+            },
+          ),
           const SizedBox(height: 32),
           
           // Recent Activity
@@ -652,9 +658,53 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
       );
     }
     
+    // Get current active session data for real-time update
+    final counterProvider = context.watch<CounterProvider>();
+    bool hasActiveSession = counterProvider.isSessionActive && counterProvider.currentCount > 0;
+    
+    // Get the name of the active durood
+    String activeDuroodName = 'Default Tasbeeh';
+    if (hasActiveSession && counterProvider.currentSession != null) {
+      final duroodProvider = context.watch<DuroodProvider>();
+      final activeDurood = duroodProvider.selectedDurood;
+      if (activeDurood != null) {
+        activeDuroodName = activeDurood.name;
+      }
+    }
+    
+    // Create a copy of the data to avoid modifying the original
+    List<Map<String, dynamic>> updatedData = [];
+    for (var item in countByDurood) {
+      updatedData.add({
+        'name': item['name'] as String,
+        'total': item['total'] as int,
+      });
+    }
+    
+    // If we have an active session, add the current count to the respective durood
+    if (hasActiveSession) {
+      bool found = false;
+      // Try to find the active durood in the list and update it
+      for (var item in updatedData) {
+        if ((item['name'] as String) == activeDuroodName) {
+          item['total'] = (item['total'] as int) + counterProvider.currentCount;
+          found = true;
+          break;
+        }
+      }
+      
+      // If not found, add it as a new entry
+      if (!found) {
+        updatedData.add({
+          'name': activeDuroodName,
+          'total': counterProvider.currentCount,
+        });
+      }
+    }
+    
     // Calculate total for percentages
     int total = 0;
-    for (var item in countByDurood) {
+    for (var item in updatedData) {
       total += item['total'] as int;
     }
     
@@ -691,12 +741,12 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
               PieChartData(
                 sectionsSpace: 2,
                 centerSpaceRadius: 50,
-                sections: _generatePieSections(countByDurood, total, theme),
+                sections: _generatePieSections(updatedData, total, theme),
               ),
             ),
           ),
           const SizedBox(height: 16),
-          ..._generateLegendItems(countByDurood, total, theme),
+          ..._generateLegendItems(updatedData, total, theme),
         ],
       ),
     );
@@ -776,7 +826,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                 ),
               ),
               Text(
-                '${percentage.round()}%',
+                '${count} (${percentage.round()}%)', // Show both count and percentage
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w500,
                 ),
